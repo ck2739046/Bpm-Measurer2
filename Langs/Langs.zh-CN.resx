@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>BPM 测速助手</value></data>
+  <data name="ImportAudio" xml:space="preserve"><value>导入音频</value></data>
+  <data name="NoAudio" xml:space="preserve"><value>未加载音频</value></data>
+  <data name="Play" xml:space="preserve"><value>▶ 播放</value></data>
+  <data name="Pause" xml:space="preserve"><value>⏸ 暂停</value></data>
+  <data name="JumpToStart" xml:space="preserve"><value>⏮ 开头</value></data>
+  <data name="SelectAudioFile" xml:space="preserve"><value>选择音频文件</value></data>
+  <data name="AudioFiles" xml:space="preserve"><value>音频文件</value></data>
+  <data name="AllFiles" xml:space="preserve"><value>所有文件</value></data>
+  <data name="DropHint" xml:space="preserve"><value>拖放音频文件到此处，或点击「导入音频」按钮</value></data>
+  <data name="LoadError" xml:space="preserve"><value>无法加载音频文件。&#xA;请确认文件格式受支持（mp3/wav/ogg/flac）。</value></data>
+  <data name="Error" xml:space="preserve"><value>错误</value></data>
+  <data name="SampleRate" xml:space="preserve"><value>采样率: </value></data>
+  <data name="Duration" xml:space="preserve"><value>时长: </value></data>
+  <data name="Channels" xml:space="preserve"><value>声道: </value></data>
+</root>

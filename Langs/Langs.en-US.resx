@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>BPM Measurer</value></data>
+  <data name="ImportAudio" xml:space="preserve"><value>Import Audio</value></data>
+  <data name="NoAudio" xml:space="preserve"><value>No audio loaded</value></data>
+  <data name="Play" xml:space="preserve"><value>▶ Play</value></data>
+  <data name="Pause" xml:space="preserve"><value>⏸ Pause</value></data>
+  <data name="JumpToStart" xml:space="preserve"><value>⏮ Start</value></data>
+  <data name="SelectAudioFile" xml:space="preserve"><value>Select Audio File</value></data>
+  <data name="AudioFiles" xml:space="preserve"><value>Audio Files</value></data>
+  <data name="AllFiles" xml:space="preserve"><value>All Files</value></data>
+  <data name="DropHint" xml:space="preserve"><value>Drag &amp; drop an audio file here, or click "Import Audio"</value></data>
+  <data name="LoadError" xml:space="preserve"><value>Failed to load audio file.&#xA;Please ensure the format is supported (mp3/wav/ogg/flac).</value></data>
+  <data name="Error" xml:space="preserve"><value>Error</value></data>
+  <data name="SampleRate" xml:space="preserve"><value>Sample Rate: </value></data>
+  <data name="Duration" xml:space="preserve"><value>Duration: </value></data>
+  <data name="Channels" xml:space="preserve"><value>Channels: </value></data>
+</root>
