@@ -30,6 +30,11 @@ public partial class MainWindow : Window
     private const double FrameIntervalMs = 1000.0 / 120.0;  // 120 FPS
     private double _lastFrameMs;
 
+    // FPS tracking
+    private int _fpsFrameCount;
+    private double _lastFpsUpdateTime;
+    private double _currentFps;
+
     // ScottPlot native render scale: <1 = downscale for perf, >1 = upscale for HiDPI
     private const double RenderScale = 0.5;
 
@@ -218,6 +223,11 @@ public partial class MainWindow : Window
         DurationText.Text = $"{_audioData.Duration:F2}s";
         ChannelsText.Text = _audioData.Channels.ToString();
         TimeText.Text = "0.000s";
+        FpsText.Text = "FPS: -";
+
+        // Reset FPS tracking
+        _fpsFrameCount = 0;
+        _lastFpsUpdateTime = _frameClock.Elapsed.TotalSeconds;
 
         PlayPauseBtn.IsEnabled = true;
         StopBtn.IsEnabled = true;
@@ -456,6 +466,19 @@ public partial class MainWindow : Window
 
         WaveformPlot.Refresh();
         SpectrogramPlot.Refresh();
+
+        // ── FPS calculation ──
+        _fpsFrameCount++;
+        double now = _frameClock.Elapsed.TotalSeconds;
+        double elapsed = now - _lastFpsUpdateTime;
+        if (elapsed >= 1)
+        {
+            _currentFps = _fpsFrameCount / elapsed;
+            _fpsFrameCount = 0;
+            _lastFpsUpdateTime = now;
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+                FpsText.Text = $"FPS: {_currentFps:F0}");
+        }
     }
 
     // ── Mouse interaction ──

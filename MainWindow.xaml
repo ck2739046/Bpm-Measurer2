@@ -108,20 +108,25 @@
 
         <!-- Bottom Status Bar -->
         <Border Grid.Row="2" Background="#FF1A1A1A" Padding="10,4">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center">
-                    <Run Text="{lex:Loc SampleRate}"/>
-                    <Run x:Name="SampleRateText" Text="-"/>
-                </TextBlock>
-                <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center" Margin="20,0,0,0">
-                    <Run Text="{lex:Loc Duration}"/>
-                    <Run x:Name="DurationText" Text="-"/>
-                </TextBlock>
-                <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center" Margin="20,0,0,0">
-                    <Run Text="{lex:Loc Channels}"/>
-                    <Run x:Name="ChannelsText" Text="-"/>
-                </TextBlock>
-            </StackPanel>
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center">
+                        <Run Text="{lex:Loc SampleRate}"/>
+                        <Run x:Name="SampleRateText" Text="-"/>
+                    </TextBlock>
+                    <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <Run Text="{lex:Loc Duration}"/>
+                        <Run x:Name="DurationText" Text="-"/>
+                    </TextBlock>
+                    <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <Run Text="{lex:Loc Channels}"/>
+                        <Run x:Name="ChannelsText" Text="-"/>
+                    </TextBlock>
+                </StackPanel>
+                <TextBlock x:Name="FpsText" HorizontalAlignment="Right"
+                           Foreground="#FF555555" FontSize="11" VerticalAlignment="Center"
+                           Text="FPS: -"/>
+            </Grid>
         </Border>
     </Grid>
 </Window>
