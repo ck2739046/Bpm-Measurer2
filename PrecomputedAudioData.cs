@@ -2,6 +2,18 @@ using Un4seen.Bass;
 
 namespace BpmMeasurer.Wpf;
 
+internal static class PrecomputeParallel
+{
+    /// <summary>
+    /// Max worker threads for precomputation loops. Caps at <see cref="Environment.ProcessorCount"/>
+    /// to avoid oversubscription. BASS decode streams are lightweight per-thread.
+    /// </summary>
+    public static readonly ParallelOptions Options = new()
+    {
+        MaxDegreeOfParallelism = Environment.ProcessorCount
+    };
+}
+
 public class WaveformEnvelope
 {
     public short[] MinValues { get; init; } = Array.Empty<short>();
@@ -32,7 +44,7 @@ public static class PrecomputedAudioData
         var minValues = new short[columns];
         var maxValues = new short[columns];
 
-        for (int c = 0; c < columns; c++)
+        Parallel.For(0, columns, PrecomputeParallel.Options, c =>
         {
             var startFrame = c * framesPerColumn;
             var endFrame = Math.Min(startFrame + framesPerColumn, totalFrames);
@@ -47,7 +59,7 @@ public static class PrecomputedAudioData
 
             minValues[c] = colMin;
             maxValues[c] = colMax;
-        }
+        });
 
         return new WaveformEnvelope
         {
@@ -66,54 +78,58 @@ public static class PrecomputedAudioData
         const int freqBands = 256;          // 纵向分辨率
         const int columnsPerSecond = 200;   // 横向分辨率
         const double logBase = 50.0;
+        const int fftDataFlag = (int)BASSData.BASS_DATA_FFT8192; // matches fftSize=8192
 
         var columns = Math.Max(1, (int)(duration * columnsPerSecond));
-        var decodeStream = Bass.BASS_StreamCreateFile(filePath, 0L, 0L, BASSFlag.BASS_STREAM_DECODE);
-        if (decodeStream == 0)
+
+        // Quick smoke test: can we open the file at all?
+        var testStream = Bass.BASS_StreamCreateFile(filePath, 0L, 0L, BASSFlag.BASS_STREAM_DECODE);
+        if (testStream == 0)
             return new SpectrogramData
             {
                 FreqBands = freqBands, Columns = 0,
                 TimeStep = 1.0 / columnsPerSecond, Duration = duration
             };
+        Bass.BASS_StreamFree(testStream);
 
-        try
+        // Pre-compute bin indices for log-spaced frequency bands (single-threaded, only 256 iterations)
+        var binIndices = new int[freqBands];
+        for (int b = 0; b < freqBands; b++)
         {
-            var fftData = new float[fftSize];
-            var magnitudes = new float[freqBands, columns];
+            var bandNorm = b / (double)freqBands;
+            var binIdx = (int)(((Math.Pow(logBase, bandNorm) - 1.0) / (logBase - 1.0)) * (numBins - 1));
+            binIndices[b] = Math.Clamp(binIdx, 0, numBins - 1);
+        }
 
-            // Pre-compute bin indices for log-spaced frequency bands
-            var binIndices = new int[freqBands];
-            for (int b = 0; b < freqBands; b++)
+        var timeStep = 1.0 / columnsPerSecond;
+        var magnitudes = new float[freqBands, columns];
+
+        // ── Parallel FFT columns ──
+        // BASS decode streams are NOT thread-safe — each thread opens its own.
+        Parallel.For(0, columns, PrecomputeParallel.Options, c =>
+        {
+            var stream = Bass.BASS_StreamCreateFile(filePath, 0L, 0L, BASSFlag.BASS_STREAM_DECODE);
+            if (stream == 0)
             {
-                var bandNorm = b / (double)freqBands;
-                var binIdx = (int)(((Math.Pow(logBase, bandNorm) - 1.0) / (logBase - 1.0)) * (numBins - 1));
-                binIndices[b] = Math.Clamp(binIdx, 0, numBins - 1);
+                for (int b = 0; b < freqBands; b++)
+                    magnitudes[b, c] = 0;
+                return;
             }
 
-            var timeStep = 1.0 / columnsPerSecond;
-
-            for (int c = 0; c < columns; c++)
+            try
             {
                 var t = c * timeStep;
-                var bytePos = Bass.BASS_ChannelSeconds2Bytes(decodeStream, t);
-                Bass.BASS_ChannelSetPosition(decodeStream, bytePos);
-                var fftFlag = fftSize switch
-                {
-                    256 => (int)BASSData.BASS_DATA_FFT256,
-                    512 => (int)BASSData.BASS_DATA_FFT512,
-                    1024 => (int)BASSData.BASS_DATA_FFT1024,
-                    2048 => (int)BASSData.BASS_DATA_FFT2048,
-                    4096 => (int)BASSData.BASS_DATA_FFT4096,
-                    8192 => (int)BASSData.BASS_DATA_FFT8192,
-                    _ => throw new ArgumentException($"Unsupported FFT size: {fftSize}")
-                };
-                var result = Bass.BASS_ChannelGetData(decodeStream, fftData, fftFlag);
+                var bytePos = Bass.BASS_ChannelSeconds2Bytes(stream, t);
+                Bass.BASS_ChannelSetPosition(stream, bytePos);
+
+                var fftData = new float[fftSize];
+                var result = Bass.BASS_ChannelGetData(stream, fftData, fftDataFlag);
 
                 if (result <= 0)
                 {
                     for (int b = 0; b < freqBands; b++)
                         magnitudes[b, c] = 0;
-                    continue;
+                    return;
                 }
 
                 for (int b = 0; b < freqBands; b++)
@@ -123,37 +139,37 @@ public static class PrecomputedAudioData
                     magnitudes[b, c] = (float)Math.Clamp((db + 100.0) / 100.0, 0.0, 1.0);
                 }
             }
-
-            // Y-axis resampling: power > 1 stretches low frequencies
-            const double yExp = 1.8;
-            var resampled = new float[freqBands, columns];
-            for (int y = 0; y < freqBands; y++)
+            finally
             {
-                var visualNorm = y / (double)(freqBands - 1);
-                var srcBandFloat = Math.Pow(visualNorm, yExp) * (freqBands - 1);
-                var srcLo = (int)srcBandFloat;
-                var srcHi = Math.Min(srcLo + 1, freqBands - 1);
-                var frac = srcBandFloat - srcLo;
-
-                for (int c = 0; c < columns; c++)
-                {
-                    resampled[y, c] = magnitudes[srcLo, c] * (float)(1.0 - frac)
-                                    + magnitudes[srcHi, c] * (float)frac;
-                }
+                Bass.BASS_StreamFree(stream);
             }
+        });
 
-            return new SpectrogramData
-            {
-                Magnitudes = resampled,
-                FreqBands = freqBands,
-                Columns = columns,
-                TimeStep = timeStep,
-                Duration = duration
-            };
-        }
-        finally
+        // ── Parallel Y-axis resampling ──
+        const double yExp = 1.8;
+        var resampled = new float[freqBands, columns];
+        Parallel.For(0, freqBands, PrecomputeParallel.Options, y =>
         {
-            Bass.BASS_StreamFree(decodeStream);
-        }
+            var visualNorm = y / (double)(freqBands - 1);
+            var srcBandFloat = Math.Pow(visualNorm, yExp) * (freqBands - 1);
+            var srcLo = (int)srcBandFloat;
+            var srcHi = Math.Min(srcLo + 1, freqBands - 1);
+            var frac = srcBandFloat - srcLo;
+
+            for (int c = 0; c < columns; c++)
+            {
+                resampled[y, c] = magnitudes[srcLo, c] * (float)(1.0 - frac)
+                                + magnitudes[srcHi, c] * (float)frac;
+            }
+        });
+
+        return new SpectrogramData
+        {
+            Magnitudes = resampled,
+            FreqBands = freqBands,
+            Columns = columns,
+            TimeStep = timeStep,
+            Duration = duration
+        };
     }
 }
