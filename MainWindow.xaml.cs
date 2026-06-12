@@ -172,11 +172,20 @@ public partial class MainWindow : Window
         StopAndFreeStreams();
         _timeTimer.Stop();
 
+        // Clear old visual state before loading new file
+        WaveformPlot.Visibility = Visibility.Collapsed;
+        SpectrogramPlot.Visibility = Visibility.Collapsed;
+        SampleRateText.Text = "-";
+        DurationText.Text = "-";
+        ChannelsText.Text = "-";
+
         var audioData = await Task.Run(() => BpmAudioLoader.Load(filePath));
         if (audioData == null)
         {
             _isLoading = false;
             OpenBtn.IsEnabled = true;
+            PlaceholderText.Visibility = Visibility.Visible;
+            FileNameText.Text = Loc("NoAudio");
             MessageBox.Show(Loc("LoadError"), Loc("Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -189,6 +198,8 @@ public partial class MainWindow : Window
             _audioData = null;
             _isLoading = false;
             OpenBtn.IsEnabled = true;
+            PlaceholderText.Visibility = Visibility.Visible;
+            FileNameText.Text = Loc("NoAudio");
             MessageBox.Show(Loc("LoadError"), Loc("Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -428,6 +439,9 @@ public partial class MainWindow : Window
         // Render at reduced resolution — ScottPlot handles upscale internally
         WaveformPlot.Plot.ScaleFactor = RenderScale;
         SpectrogramPlot.Plot.ScaleFactor = RenderScale;
+
+        WaveformPlot.Visibility = Visibility.Visible;
+        SpectrogramPlot.Visibility = Visibility.Visible;
 
         WaveformPlot.Refresh();
         SpectrogramPlot.Refresh();

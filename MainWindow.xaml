@@ -88,9 +88,11 @@
             </Grid.RowDefinitions>
 
             <sp:WpfPlot x:Name="WaveformPlot" Grid.Row="0"
-                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                        Visibility="Collapsed"/>
             <sp:WpfPlot x:Name="SpectrogramPlot" Grid.Row="1"
-                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                        Visibility="Collapsed"/>
 
             <!-- Empty state placeholder -->
             <TextBlock x:Name="PlaceholderText" Grid.RowSpan="2"
