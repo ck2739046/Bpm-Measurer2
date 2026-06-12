@@ -2,9 +2,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using ScottPlot;
 using ScottPlot.WPF;
@@ -29,25 +31,25 @@ public partial class MainWindow : Window
     private double _lastFpsUpdateTime;
     private double _currentFps;
 
-    // Frame skip: spectrogram only refreshes every Nth frame during playback
-    private int _specSkipCounter;
-
     // Cache
     private WaveformEnvelope? _waveEnvelope;
     private SpectrogramData? _specCache;
+
+    // Spectrogram WriteableBitmap (filled once, GPU-composited thereafter)
+    private WriteableBitmap? _specBitmap;
 
     // Viewport
     private double _viewCenterTime;
     private double _viewHalfWidth;
     private bool _plotsConfigured;
+    private bool _specConfigured;
 
     // ScottPlot plottables
     private ScottPlot.Plottables.VerticalLine? _waveCenterLine;
-    private ScottPlot.Plottables.VerticalLine? _specCenterLine;
 
     // Drag state
     private bool _isDragging;
-    private WpfPlot? _dragSourcePlot;
+    private FrameworkElement? _dragSourceElement;
     private double _dragStartPixelX;
 
     public static string Loc(string key)
@@ -164,7 +166,7 @@ public partial class MainWindow : Window
 
         // Clear old visual state before loading new file
         WaveformPlot.Visibility = Visibility.Collapsed;
-        SpectrogramPlot.Visibility = Visibility.Collapsed;
+        SpectrogramCanvas.Visibility = Visibility.Collapsed;
         SampleRateText.Text = "-";
         DurationText.Text = "-";
         ChannelsText.Text = "-";
@@ -261,7 +263,6 @@ public partial class MainWindow : Window
         }
 
         _isPlaying = true;
-        _specSkipCounter = 0;
         CompositionTarget.Rendering += OnRenderingFrame;
         PlayPauseBtn.Content = Loc("Pause");
     }
@@ -322,144 +323,143 @@ public partial class MainWindow : Window
     {
         _viewHalfWidth = (right - left) / 2;
         WaveformPlot.Plot.Axes.SetLimitsX(left, right);
-        SpectrogramPlot.Plot.Axes.SetLimitsX(left, right);
     }
 
     private void EnsurePlotsConfigured()
     {
-        if (_plotsConfigured || _audioData == null || _waveEnvelope == null || _specCache == null) return;
-        _plotsConfigured = true;
+        if (_audioData == null || _waveEnvelope == null || _specCache == null) return;
 
-        // Clear old plottables and event handlers from previous loads
-        WaveformPlot.Plot.Clear();
-        SpectrogramPlot.Plot.Clear();
-        WaveformPlot.PreviewMouseLeftButtonDown -= OnPlotMouseDown;
-        SpectrogramPlot.PreviewMouseLeftButtonDown -= OnPlotMouseDown;
-        WaveformPlot.PreviewMouseMove -= OnPlotMouseMove;
-        SpectrogramPlot.PreviewMouseMove -= OnPlotMouseMove;
-        WaveformPlot.PreviewMouseLeftButtonUp -= OnPlotMouseUp;
-        SpectrogramPlot.PreviewMouseLeftButtonUp -= OnPlotMouseUp;
-        WaveformPlot.PreviewMouseWheel -= OnPlotMouseWheel;
-        SpectrogramPlot.PreviewMouseWheel -= OnPlotMouseWheel;
-
-        // ── Waveform: single interleaved line ──
-        var wavePlot = WaveformPlot.Plot;
-        wavePlot.Title("");
-
-        int cols = _waveEnvelope.Columns;
-        double[] alt = new double[cols * 2];
-        for (int i = 0; i < cols; i++)
+        if (!_plotsConfigured)
         {
-            alt[i * 2] = _waveEnvelope.MaxValues[i];
-            alt[i * 2 + 1] = _waveEnvelope.MinValues[i];
+            _plotsConfigured = true;
+
+            // Clear old plottables and event handlers from previous loads
+            WaveformPlot.Plot.Clear();
+            WaveformPlot.PreviewMouseLeftButtonDown -= OnPlotMouseDown;
+            WaveformPlot.PreviewMouseMove -= OnPlotMouseMove;
+            WaveformPlot.PreviewMouseLeftButtonUp -= OnPlotMouseUp;
+            WaveformPlot.PreviewMouseWheel -= OnPlotMouseWheel;
+
+            // ── Waveform: single interleaved line ──
+            var wavePlot = WaveformPlot.Plot;
+            wavePlot.Title("");
+
+            int cols = _waveEnvelope.Columns;
+            double[] alt = new double[cols * 2];
+            for (int i = 0; i < cols; i++)
+            {
+                alt[i * 2] = _waveEnvelope.MaxValues[i];
+                alt[i * 2 + 1] = _waveEnvelope.MinValues[i];
+            }
+            var waveSig = wavePlot.Add.Signal(alt);
+            waveSig.Data.Period = _waveEnvelope.TimeStep / 2;
+            waveSig.Color = ScottPlot.Color.FromHex("#00F2FF");
+            waveSig.LineWidth = 1;
+
+            _waveCenterLine = wavePlot.Add.VerticalLine(_viewCenterTime);
+            _waveCenterLine.Color = ScottPlot.Color.FromHex("#00FF88");
+            _waveCenterLine.LineWidth = 2;
+            _waveCenterLine.IsDraggable = false;
+
+            wavePlot.FigureBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
+            wavePlot.DataBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
+            wavePlot.Axes.Color(ScottPlot.Color.FromHex("#333333"));
+            wavePlot.Axes.SetLimitsY(-32768, 32767);
+            wavePlot.Axes.Left.IsVisible = false;
+
+            // Initial X range
+            SetBothXLimits(0, _audioData.Duration);
+
+            WaveformPlot.UserInputProcessor.IsEnabled = false;
+            WaveformPlot.Menu = null;
+
+            WaveformPlot.PreviewMouseLeftButtonDown += OnPlotMouseDown;
+            WaveformPlot.PreviewMouseMove += OnPlotMouseMove;
+            WaveformPlot.PreviewMouseLeftButtonUp += OnPlotMouseUp;
+            WaveformPlot.PreviewMouseWheel += OnPlotMouseWheel;
+
+            WaveformPlot.Visibility = Visibility.Visible;
+            WaveformPlot.Refresh();
         }
-        var waveSig = wavePlot.Add.Signal(alt);
-        waveSig.Data.Period = _waveEnvelope.TimeStep / 2;
-        waveSig.Color = ScottPlot.Color.FromHex("#00F2FF");
-        waveSig.LineWidth = 1;
 
-        _waveCenterLine = wavePlot.Add.VerticalLine(_viewCenterTime);
-        _waveCenterLine.Color = ScottPlot.Color.FromHex("#00FF88");
-        _waveCenterLine.LineWidth = 2;
-        _waveCenterLine.IsDraggable = false;
+        if (!_specConfigured)
+        {
+            _specConfigured = true;
 
-        wavePlot.FigureBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
-        wavePlot.DataBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
-        wavePlot.Axes.Color(ScottPlot.Color.FromHex("#333333"));
-        wavePlot.Axes.SetLimitsY(-32768, 32767);
-        wavePlot.Axes.Left.IsVisible = false;
+            SpectrogramCanvas.PreviewMouseLeftButtonDown -= OnCanvasMouseDown;
+            SpectrogramCanvas.PreviewMouseMove -= OnCanvasMouseMove;
+            SpectrogramCanvas.PreviewMouseLeftButtonUp -= OnCanvasMouseUp;
+            SpectrogramCanvas.PreviewMouseWheel -= OnPlotMouseWheel;
 
-        // ── Spectrogram: Heatmap ──
-        var specPlot = SpectrogramPlot.Plot;
-        specPlot.Title("");
+            // Generate WriteableBitmap once
+            _specBitmap = SpectrogramBitmapRenderer.Create(_specCache);
+            SpectrogramImage.Source = _specBitmap;
 
-        var heatmapData = ConvertToDouble(_specCache.Magnitudes);
-        var heatmap = specPlot.Add.Heatmap(heatmapData);
-        heatmap.Colormap = new WaveSpectrogramColormap();
-        heatmap.Extent = new CoordinateRect(0, _specCache.Duration, _specCache.FreqBands, 0);
+            // Fit canvas height
+            SpecPlayheadLine.Y2 = SpectrogramCanvas.ActualHeight;
 
-        _specCenterLine = specPlot.Add.VerticalLine(_viewCenterTime);
-        _specCenterLine.Color = ScottPlot.Color.FromHex("#00FF88");
-        _specCenterLine.LineWidth = 2;
-        _specCenterLine.IsDraggable = false;
+            SpectrogramCanvas.PreviewMouseLeftButtonDown += OnCanvasMouseDown;
+            SpectrogramCanvas.PreviewMouseMove += OnCanvasMouseMove;
+            SpectrogramCanvas.PreviewMouseLeftButtonUp += OnCanvasMouseUp;
+            SpectrogramCanvas.PreviewMouseWheel += OnPlotMouseWheel;
 
-        specPlot.FigureBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
-        specPlot.DataBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
-        specPlot.Axes.Color(ScottPlot.Color.FromHex("#333333"));
-        specPlot.Axes.SetLimitsY(_specCache.FreqBands, 0);
-        specPlot.Axes.Left.IsVisible = false;
+            SpectrogramCanvas.Visibility = Visibility.Visible;
+        }
+    }
 
-        // Initial X range: show entire duration
-        SetBothXLimits(0, _audioData.Duration);
-
-        // ── Disable ScottPlot default interaction ──
-        WaveformPlot.UserInputProcessor.IsEnabled = false;
-        SpectrogramPlot.UserInputProcessor.IsEnabled = false;
-
-        // ── Custom mouse events ──
-        WaveformPlot.PreviewMouseLeftButtonDown += OnPlotMouseDown;
-        SpectrogramPlot.PreviewMouseLeftButtonDown += OnPlotMouseDown;
-        WaveformPlot.PreviewMouseMove += OnPlotMouseMove;
-        SpectrogramPlot.PreviewMouseMove += OnPlotMouseMove;
-        WaveformPlot.PreviewMouseLeftButtonUp += OnPlotMouseUp;
-        SpectrogramPlot.PreviewMouseLeftButtonUp += OnPlotMouseUp;
-        WaveformPlot.PreviewMouseWheel += OnPlotMouseWheel;
-        SpectrogramPlot.PreviewMouseWheel += OnPlotMouseWheel;
-
-        // Disable right-click menu
-        WaveformPlot.Menu = null;
-        SpectrogramPlot.Menu = null;
-
-        WaveformPlot.Visibility = Visibility.Visible;
-        SpectrogramPlot.Visibility = Visibility.Visible;
-
-        WaveformPlot.Refresh();
-        SpectrogramPlot.Refresh();
+    private void SpectrogramCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        SpecPlayheadLine.Y2 = SpectrogramCanvas.ActualHeight;
+        if (_specConfigured)
+            UpdateSpectrogramTransform();
     }
 
     // ── Rendering ──
 
-    private static double[,] ConvertToDouble(float[,] src)
+    private void UpdateSpectrogramTransform()
     {
-        var rows = src.GetLength(0);
-        var cols = src.GetLength(1);
-        var result = new double[rows, cols];
-        for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                result[r, c] = src[r, c];
-        return result;
+        if (_specCache == null) return;
+        double canvasW = SpectrogramCanvas.ActualWidth;
+        if (canvasW <= 0) return;
+
+        // pixelsPerSec = data columns per second of audio
+        double pixelsPerSec = _specCache.Columns / _specCache.Duration;
+
+        // Scale: fit (2 * viewHalfWidth) seconds into canvas width
+        double scaleX = canvasW / (2.0 * _viewHalfWidth * pixelsPerSec);
+        double canvasH = SpectrogramCanvas.ActualHeight;
+        SpecScale.ScaleX = scaleX;
+        SpecScale.ScaleY = canvasH > 0 ? canvasH / _specCache.FreqBands : 1.0;
+
+        // Translate: left-align the view to (_viewCenterTime - viewHalfWidth) seconds
+        double translateX = -(_viewCenterTime - _viewHalfWidth) * pixelsPerSec * scaleX;
+        SpecTranslate.X = translateX;
+        SpecTranslate.Y = 0;
+
+        // Playhead vertical line at canvas center
+        double mid = canvasW * 0.5;
+        SpecPlayheadLine.X1 = mid;
+        SpecPlayheadLine.X2 = mid;
+        SpecPlayheadLine.Visibility = Visibility.Visible;
     }
 
     private void RenderVisuals()
     {
         if (_audioData == null || _waveEnvelope == null || _specCache == null) return;
 
-        if (!_plotsConfigured)
+        if (!_plotsConfigured || !_specConfigured)
             EnsurePlotsConfigured();
 
-        // Keep X axis centered on viewCenterTime
+        // Waveform
         double half = _viewHalfWidth;
         double left = _viewCenterTime - half;
         double right = _viewCenterTime + half;
         WaveformPlot.Plot.Axes.SetLimitsX(left, right);
-        SpectrogramPlot.Plot.Axes.SetLimitsX(left, right);
-
-        // Update center lines
         if (_waveCenterLine != null) _waveCenterLine.X = _viewCenterTime;
-        if (_specCenterLine != null) _specCenterLine.X = _viewCenterTime;
-
-        // Waveform always refreshes (Signal plot is lightweight O(screen_width))
         WaveformPlot.Refresh();
 
-        // Spectrogram: skip every other frame during playback to reduce CPU load
-        bool refreshSpec = true;
-        if (_isPlaying)
-        {
-            _specSkipCounter++;
-            refreshSpec = (_specSkipCounter & 1) == 0;
-        }
-        if (refreshSpec)
-            SpectrogramPlot.Refresh();
+        // Spectrogram — only transform, no bitmap regeneration
+        UpdateSpectrogramTransform();
 
         // ── FPS calculation ──
         _fpsFrameCount++;
@@ -479,43 +479,70 @@ public partial class MainWindow : Window
     private void OnPlotMouseDown(object sender, MouseButtonEventArgs e)
     {
         var plot = (WpfPlot)sender;
-        _isDragging = true;
-        _dragSourcePlot = plot;
-        _dragStartPixelX = e.GetPosition(plot).X;
+        StartDrag(plot, e.GetPosition(plot).X);
         plot.CaptureMouse();
+    }
 
-        // Pause if playing (matches Web behavior)
+    private void OnCanvasMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var canvas = (Canvas)sender;
+        StartDrag(canvas, e.GetPosition(canvas).X);
+        canvas.CaptureMouse();
+    }
+
+    private void StartDrag(FrameworkElement element, double pixelX)
+    {
+        _isDragging = true;
+        _dragSourceElement = element;
+        _dragStartPixelX = pixelX;
         if (_isPlaying) PausePlayback();
     }
 
     private void OnPlotMouseMove(object sender, MouseEventArgs e)
     {
-        if (!_isDragging || _dragSourcePlot == null) return;
-
-        double currentX = e.GetPosition(_dragSourcePlot).X;
+        if (!_isDragging || _dragSourceElement == null) return;
+        double currentX = e.GetPosition(_dragSourceElement).X;
         double delta = currentX - _dragStartPixelX;
         _dragStartPixelX = currentX;
+        SeekByDelta(delta);
+    }
 
+    private void OnCanvasMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDragging || _dragSourceElement == null) return;
+        double currentX = e.GetPosition(_dragSourceElement).X;
+        double delta = currentX - _dragStartPixelX;
+        _dragStartPixelX = currentX;
         SeekByDelta(delta);
     }
 
     private void OnPlotMouseUp(object sender, MouseButtonEventArgs e)
     {
+        EndDrag();
+    }
+
+    private void OnCanvasMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        EndDrag();
+    }
+
+    private void EndDrag()
+    {
         if (!_isDragging) return;
         _isDragging = false;
-        _dragSourcePlot?.ReleaseMouseCapture();
-        _dragSourcePlot = null;
+        _dragSourceElement?.ReleaseMouseCapture();
+        _dragSourceElement = null;
     }
 
     private void SeekByDelta(double deltaPixel)
     {
-        if (_audioData == null || _dragSourcePlot == null) return;
-        double plotWidth = _dragSourcePlot.ActualWidth;
-        if (plotWidth <= 0) return;
+        if (_audioData == null || _dragSourceElement == null) return;
+        double elemWidth = _dragSourceElement.ActualWidth;
+        if (elemWidth <= 0) return;
 
-        var limits = _dragSourcePlot.Plot.Axes.GetLimits();
-        double dataSpan = limits.Right - limits.Left;
-        double deltaTime = -deltaPixel * dataSpan / plotWidth;
+        // Data span = 2 * viewHalfWidth (both waveform and spectrogram use same range)
+        double dataSpan = _viewHalfWidth * 2.0;
+        double deltaTime = -deltaPixel * dataSpan / elemWidth;
 
         _viewCenterTime += deltaTime;
         _viewCenterTime = Math.Clamp(_viewCenterTime, 0, _audioData.Duration);

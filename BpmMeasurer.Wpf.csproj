@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net8.0-windows</TargetFramework>
+        <TargetFramework>net6.0-windows</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UseWPF>true</UseWPF>
@@ -53,5 +53,10 @@
          # License: MIT (electron/rcedit) -->
     <Target Name="FixOriginalFilename" AfterTargets="PostBuildEvent">
         <Exec Command="&quot;$(ProjectDir)tools\rcedit.exe&quot; &quot;$(TargetDir)$(AssemblyName).exe&quot; --set-version-string &quot;OriginalFilename&quot; &quot;&quot;" />
+    </Target>
+
+    <!-- Post-build: 删除非 Windows x86/x64 平台的 runtime 库 -->
+    <Target Name="CleanRuntimes" AfterTargets="PostBuildEvent">
+        <Exec Command="powershell -NoProfile -Command &quot;Get-ChildItem '$(TargetDir)runtimes' -Directory | Where-Object { $_.Name -notin @('win','win-x64','win-x86') } | Remove-Item -Recurse -Force&quot;" />
     </Target>
 </Project>

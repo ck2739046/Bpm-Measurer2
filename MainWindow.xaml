@@ -90,9 +90,24 @@
             <sp:WpfPlot x:Name="WaveformPlot" Grid.Row="0"
                         HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                         Visibility="Collapsed"/>
-            <sp:WpfPlot x:Name="SpectrogramPlot" Grid.Row="1"
-                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                        Visibility="Collapsed"/>
+            <!-- Spectrogram: Canvas + WriteableBitmap (GPU composited, zero CPU per-frame) -->
+            <Canvas x:Name="SpectrogramCanvas" Grid.Row="1"
+                    ClipToBounds="True" Background="#FF0A0A0A"
+                    Visibility="Collapsed"
+                    SizeChanged="SpectrogramCanvas_SizeChanged">
+                <Image x:Name="SpectrogramImage" Stretch="None"
+                       RenderOptions.BitmapScalingMode="NearestNeighbor">
+                    <Image.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="SpecScale" />
+                            <TranslateTransform x:Name="SpecTranslate" />
+                        </TransformGroup>
+                    </Image.RenderTransform>
+                </Image>
+                <Line x:Name="SpecPlayheadLine"
+                      Stroke="#FF00FF88" StrokeThickness="2"
+                      Y1="0" />
+            </Canvas>
 
             <!-- Empty state placeholder -->
             <TextBlock x:Name="PlaceholderText" Grid.RowSpan="2"
