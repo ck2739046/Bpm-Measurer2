@@ -35,9 +35,6 @@ public partial class MainWindow : Window
     private double _lastFpsUpdateTime;
     private double _currentFps;
 
-    // ScottPlot native render scale: <1 = downscale for perf, >1 = upscale for HiDPI
-    private const double RenderScale = 0.5;
-
     // Cache
     private WaveformEnvelope? _waveEnvelope;
     private SpectrogramData? _specCache;
@@ -435,10 +432,6 @@ public partial class MainWindow : Window
         // Disable right-click menu
         WaveformPlot.Menu = null;
         SpectrogramPlot.Menu = null;
-
-        // Render at reduced resolution — ScottPlot handles upscale internally
-        WaveformPlot.Plot.ScaleFactor = RenderScale;
-        SpectrogramPlot.Plot.ScaleFactor = RenderScale;
 
         WaveformPlot.Visibility = Visibility.Visible;
         SpectrogramPlot.Visibility = Visibility.Visible;
