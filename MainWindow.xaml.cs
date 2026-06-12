@@ -1,18 +1,16 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Timers;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Threading;
+using System.Windows.Media;
 using Microsoft.Win32;
 using ScottPlot;
 using ScottPlot.WPF;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Fx;
 using WPFLocalizeExtension.Extensions;
-using Timer = System.Timers.Timer;
 
 namespace BpmMeasurer.Wpf;
 
@@ -21,19 +19,18 @@ public partial class MainWindow : Window
     private BpmAudioData? _audioData;
     private volatile int _bgmStream;
     private volatile int _decodeStream;
-    private readonly Timer _timeTimer = new(4);  // ~250 Hz polling, capped by frame clock
     private volatile bool _isPlaying;
     private volatile bool _isLoading;
 
-    // Frame cap
     private readonly Stopwatch _frameClock = Stopwatch.StartNew();
-    private const double FrameIntervalMs = 1000.0 / 120.0;  // 120 FPS
-    private double _lastFrameMs;
 
     // FPS tracking
     private int _fpsFrameCount;
     private double _lastFpsUpdateTime;
     private double _currentFps;
+
+    // Frame skip: spectrogram only refreshes every Nth frame during playback
+    private int _specSkipCounter;
 
     // Cache
     private WaveformEnvelope? _waveEnvelope;
@@ -42,7 +39,6 @@ public partial class MainWindow : Window
     // Viewport
     private double _viewCenterTime;
     private double _viewHalfWidth;
-    private int _renderQueued; // 0 = idle, 1 = render scheduled
     private bool _plotsConfigured;
 
     // ScottPlot plottables
@@ -67,9 +63,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         ApplyLocalizedTexts();
-
-        _timeTimer.Elapsed += OnTimerTick;
-        _timeTimer.AutoReset = true;
 
         AllowDrop = true;
         DragEnter += (s, e) =>
@@ -106,7 +99,7 @@ public partial class MainWindow : Window
 
     private void Window_Closed(object sender, EventArgs e)
     {
-        _timeTimer.Stop();
+        CompositionTarget.Rendering -= OnRenderingFrame;
         StopAndFreeStreams();
         Bass.BASS_Free();
     }
@@ -167,7 +160,7 @@ public partial class MainWindow : Window
         OpenBtn.IsEnabled = false;
 
         StopAndFreeStreams();
-        _timeTimer.Stop();
+        CompositionTarget.Rendering -= OnRenderingFrame;
 
         // Clear old visual state before loading new file
         WaveformPlot.Visibility = Visibility.Collapsed;
@@ -268,12 +261,14 @@ public partial class MainWindow : Window
         }
 
         _isPlaying = true;
-        _timeTimer.Start();
+        _specSkipCounter = 0;
+        CompositionTarget.Rendering += OnRenderingFrame;
         PlayPauseBtn.Content = Loc("Pause");
     }
 
     private void PausePlayback()
     {
+        CompositionTarget.Rendering -= OnRenderingFrame;
         if (_bgmStream != 0)
             Bass.BASS_ChannelPause(_bgmStream);
         _isPlaying = false;
@@ -284,6 +279,7 @@ public partial class MainWindow : Window
     {
         if (_bgmStream == 0) return;
 
+        CompositionTarget.Rendering -= OnRenderingFrame;
         if (_isPlaying)
         {
             Bass.BASS_ChannelPause(_bgmStream);
@@ -297,39 +293,20 @@ public partial class MainWindow : Window
         RenderVisuals();
     }
 
-    // ── Timer: update time + viewport ──
+    // ── Frame rendering: driven by WPF composition thread ──
 
-    private void OnTimerTick(object? sender, System.Timers.ElapsedEventArgs e)
+    private void OnRenderingFrame(object? sender, EventArgs e)
     {
         if (!_isPlaying || _bgmStream == 0) return;
-        try
-        {
-            var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
-            var time = Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos);
-            _viewCenterTime = time;
 
-            // Time text is a single textblock update — negligible cost, always update
-            Dispatcher.BeginInvoke(() => TimeText.Text = $"{time:F3}s");
+        var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
+        var time = Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos);
+        _viewCenterTime = time;
 
-            // Frame cap: skip if within same frame window
-            double elapsed = _frameClock.Elapsed.TotalMilliseconds;
-            if (elapsed - _lastFrameMs < FrameIntervalMs) return;
-            _lastFrameMs = elapsed;
+        // Time text update — already on UI thread, no dispatcher overhead
+        TimeText.Text = $"{time:F3}s";
 
-            // Schedule render at background priority — auto-coalesces
-            if (Interlocked.CompareExchange(ref _renderQueued, 1, 0) == 0)
-            {
-                Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-                {
-                    Interlocked.Exchange(ref _renderQueued, 0);
-                    RenderVisuals();
-                });
-            }
-        }
-        catch
-        {
-            // channel may become invalid
-        }
+        RenderVisuals();
     }
 
     // ── ScottPlot Plots ──
@@ -471,8 +448,18 @@ public partial class MainWindow : Window
         if (_waveCenterLine != null) _waveCenterLine.X = _viewCenterTime;
         if (_specCenterLine != null) _specCenterLine.X = _viewCenterTime;
 
+        // Waveform always refreshes (Signal plot is lightweight O(screen_width))
         WaveformPlot.Refresh();
-        SpectrogramPlot.Refresh();
+
+        // Spectrogram: skip every other frame during playback to reduce CPU load
+        bool refreshSpec = true;
+        if (_isPlaying)
+        {
+            _specSkipCounter++;
+            refreshSpec = (_specSkipCounter & 1) == 0;
+        }
+        if (refreshSpec)
+            SpectrogramPlot.Refresh();
 
         // ── FPS calculation ──
         _fpsFrameCount++;
@@ -483,8 +470,7 @@ public partial class MainWindow : Window
             _currentFps = _fpsFrameCount / elapsed;
             _fpsFrameCount = 0;
             _lastFpsUpdateTime = now;
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
-                FpsText.Text = $"FPS: {_currentFps:F0}");
+            FpsText.Text = $"FPS: {_currentFps:F0}";
         }
     }
 
