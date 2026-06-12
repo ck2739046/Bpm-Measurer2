@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Timers;
@@ -20,9 +21,17 @@ public partial class MainWindow : Window
     private BpmAudioData? _audioData;
     private volatile int _bgmStream;
     private volatile int _decodeStream;
-    private readonly Timer _timeTimer = new(20);
+    private readonly Timer _timeTimer = new(4);  // ~250 Hz polling, capped by frame clock
     private volatile bool _isPlaying;
     private volatile bool _isLoading;
+
+    // Frame cap
+    private readonly Stopwatch _frameClock = Stopwatch.StartNew();
+    private const double FrameIntervalMs = 1000.0 / 120.0;  // 120 FPS
+    private double _lastFrameMs;
+
+    // ScottPlot native render scale: <1 = downscale for perf, >1 = upscale for HiDPI
+    private const double RenderScale = 0.5;
 
     // Cache
     private WaveformEnvelope? _waveEnvelope;
@@ -281,8 +290,13 @@ public partial class MainWindow : Window
             var time = Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos);
             _viewCenterTime = time;
 
-            // Update time text immediately (lightweight)
+            // Time text is a single textblock update — negligible cost, always update
             Dispatcher.BeginInvoke(() => TimeText.Text = $"{time:F3}s");
+
+            // Frame cap: skip if within same frame window
+            double elapsed = _frameClock.Elapsed.TotalMilliseconds;
+            if (elapsed - _lastFrameMs < FrameIntervalMs) return;
+            _lastFrameMs = elapsed;
 
             // Schedule render at background priority — auto-coalesces
             if (Interlocked.CompareExchange(ref _renderQueued, 1, 0) == 0)
@@ -401,6 +415,10 @@ public partial class MainWindow : Window
         WaveformPlot.Menu = null;
         SpectrogramPlot.Menu = null;
 
+        // Render at reduced resolution — ScottPlot handles upscale internally
+        WaveformPlot.Plot.ScaleFactor = RenderScale;
+        SpectrogramPlot.Plot.ScaleFactor = RenderScale;
+
         WaveformPlot.Refresh();
         SpectrogramPlot.Refresh();
     }
@@ -438,7 +456,6 @@ public partial class MainWindow : Window
 
         WaveformPlot.Refresh();
         SpectrogramPlot.Refresh();
-        PlaceholderText.Visibility = Visibility.Collapsed;
     }
 
     // ── Mouse interaction ──
@@ -494,7 +511,6 @@ public partial class MainWindow : Window
     private void OnPlotMouseWheel(object sender, MouseWheelEventArgs e)
     {
         e.Handled = true;
-        if (_isPlaying) return;
         ZoomXOnly(e.Delta > 0);
     }
 
