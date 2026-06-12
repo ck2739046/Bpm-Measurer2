@@ -4,6 +4,7 @@ using System.Timers;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using ScottPlot;
 using ScottPlot.WPF;
@@ -17,10 +18,11 @@ namespace BpmMeasurer.Wpf;
 public partial class MainWindow : Window
 {
     private BpmAudioData? _audioData;
-    private int _bgmStream;
-    private int _decodeStream;
+    private volatile int _bgmStream;
+    private volatile int _decodeStream;
     private readonly Timer _timeTimer = new(20);
-    private bool _isPlaying;
+    private volatile bool _isPlaying;
+    private volatile bool _isLoading;
 
     // Cache
     private WaveformEnvelope? _waveEnvelope;
@@ -29,7 +31,7 @@ public partial class MainWindow : Window
     // Viewport
     private double _viewCenterTime;
     private double _viewHalfWidth;
-    private volatile bool _renderPending;
+    private int _renderQueued; // 0 = idle, 1 = render scheduled
     private bool _plotsConfigured;
 
     // ScottPlot plottables
@@ -133,10 +135,13 @@ public partial class MainWindow : Window
         if (_bgmStream != 0)
         {
             Bass.BASS_ChannelStop(_bgmStream);
+            // BASS_FX_FREESOURCE auto-frees the decode stream,
+            // so clear the handle to avoid double-free below.
             Bass.BASS_StreamFree(_bgmStream);
             _bgmStream = 0;
+            _decodeStream = 0;
         }
-        if (_decodeStream != 0)
+        else if (_decodeStream != 0)
         {
             Bass.BASS_StreamFree(_decodeStream);
             _decodeStream = 0;
@@ -144,23 +149,32 @@ public partial class MainWindow : Window
         _isPlaying = false;
     }
 
-    private void LoadAudioFile(string filePath)
+    private async void LoadAudioFile(string filePath)
     {
+        if (_isLoading) return;
+        _isLoading = true;
+        OpenBtn.IsEnabled = false;
+
         StopAndFreeStreams();
         _timeTimer.Stop();
 
-        _audioData = BpmAudioLoader.Load(filePath);
-        if (_audioData == null)
+        var audioData = await Task.Run(() => BpmAudioLoader.Load(filePath));
+        if (audioData == null)
         {
+            _isLoading = false;
+            OpenBtn.IsEnabled = true;
             MessageBox.Show(Loc("LoadError"), Loc("Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
+        _audioData = audioData;
 
         _decodeStream = Bass.BASS_StreamCreateFile(filePath, 0L, 0L, BASSFlag.BASS_STREAM_DECODE);
         if (_decodeStream == 0)
         {
             _audioData = null;
+            _isLoading = false;
+            OpenBtn.IsEnabled = true;
             MessageBox.Show(Loc("LoadError"), Loc("Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -170,19 +184,20 @@ public partial class MainWindow : Window
         // Show loading indicator
         PlaceholderText.Visibility = Visibility.Collapsed;
         LoadingText.Visibility = Visibility.Visible;
-        LoadingText.Text = Loc("Loading");
-        Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, () => { });
 
-        // Compute caches
         LoadingText.Text = Loc("ComputingWaveform");
-        Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, () => { });
-        _waveEnvelope = PrecomputedAudioData.ComputeWaveform(
-            _audioData.RawSamples, _audioData.Channels, _audioData.Duration);
+        await Task.Run(() =>
+        {
+            _waveEnvelope = PrecomputedAudioData.ComputeWaveform(
+                _audioData.RawSamples, _audioData.Channels, _audioData.Duration);
+        });
 
         LoadingText.Text = Loc("ComputingSpectrogram");
-        Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, () => { });
-        _specCache = PrecomputedAudioData.ComputeSpectrogram(
-            _audioData.FilePath, _audioData.Duration);
+        await Task.Run(() =>
+        {
+            _specCache = PrecomputedAudioData.ComputeSpectrogram(
+                _audioData.FilePath, _audioData.Duration);
+        });
 
         LoadingText.Visibility = Visibility.Collapsed;
 
@@ -198,6 +213,9 @@ public partial class MainWindow : Window
         PlayPauseBtn.IsEnabled = true;
         StopBtn.IsEnabled = true;
         PlayPauseBtn.Content = Loc("Play");
+
+        _isLoading = false;
+        OpenBtn.IsEnabled = true;
 
         RenderVisuals();
     }
@@ -262,14 +280,19 @@ public partial class MainWindow : Window
             var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
             var time = Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos);
             _viewCenterTime = time;
-            if (_renderPending) return;
-            _renderPending = true;
-            Dispatcher.BeginInvoke(() =>
+
+            // Update time text immediately (lightweight)
+            Dispatcher.BeginInvoke(() => TimeText.Text = $"{time:F3}s");
+
+            // Schedule render at background priority — auto-coalesces
+            if (Interlocked.CompareExchange(ref _renderQueued, 1, 0) == 0)
             {
-                TimeText.Text = $"{time:F3}s";
-                RenderVisuals();
-                _renderPending = false;
-            });
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+                {
+                    Interlocked.Exchange(ref _renderQueued, 0);
+                    RenderVisuals();
+                });
+            }
         }
         catch
         {
@@ -297,6 +320,18 @@ public partial class MainWindow : Window
     {
         if (_plotsConfigured || _audioData == null || _waveEnvelope == null || _specCache == null) return;
         _plotsConfigured = true;
+
+        // Clear old plottables and event handlers from previous loads
+        WaveformPlot.Plot.Clear();
+        SpectrogramPlot.Plot.Clear();
+        WaveformPlot.PreviewMouseLeftButtonDown -= OnPlotMouseDown;
+        SpectrogramPlot.PreviewMouseLeftButtonDown -= OnPlotMouseDown;
+        WaveformPlot.PreviewMouseMove -= OnPlotMouseMove;
+        SpectrogramPlot.PreviewMouseMove -= OnPlotMouseMove;
+        WaveformPlot.PreviewMouseLeftButtonUp -= OnPlotMouseUp;
+        SpectrogramPlot.PreviewMouseLeftButtonUp -= OnPlotMouseUp;
+        WaveformPlot.PreviewMouseWheel -= OnPlotMouseWheel;
+        SpectrogramPlot.PreviewMouseWheel -= OnPlotMouseWheel;
 
         // ── Waveform: single interleaved line ──
         var wavePlot = WaveformPlot.Plot;
