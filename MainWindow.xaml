@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:lex="http://wpflocalizeextension.codeplex.com"
+        xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         lex:LocalizeDictionary.DesignCulture="zh-CN"
         lex:ResxLocalizationProvider.DefaultAssembly="BpmMeasurer.Wpf"
         lex:ResxLocalizationProvider.DefaultDictionary="Langs"
@@ -86,16 +87,23 @@
                 <RowDefinition Height="0.5*"/>
             </Grid.RowDefinitions>
 
-            <Image x:Name="WaveformImage" Grid.Row="0"
-                   Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-            <Image x:Name="SpectrogramImage" Grid.Row="1"
-                   Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+            <sp:WpfPlot x:Name="WaveformPlot" Grid.Row="0"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+            <sp:WpfPlot x:Name="SpectrogramPlot" Grid.Row="1"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
             <!-- Empty state placeholder -->
             <TextBlock x:Name="PlaceholderText" Grid.RowSpan="2"
                        Text="拖放音频文件到此处，或点击「导入音频」按钮"
                        Foreground="#FF333333" FontSize="16" FontWeight="Bold"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+            <!-- Loading indicator -->
+            <TextBlock x:Name="LoadingText" Grid.RowSpan="2"
+                       Text="正在加载..."
+                       Foreground="#FF818CF8" FontSize="20" FontWeight="Bold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Visibility="Collapsed"/>
         </Grid>
 
         <!-- Bottom Status Bar -->

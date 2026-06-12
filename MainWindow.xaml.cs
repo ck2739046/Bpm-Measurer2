@@ -1,13 +1,12 @@
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Timers;
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using ScottPlot;
+using ScottPlot.WPF;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Fx;
 using WPFLocalizeExtension.Extensions;
@@ -19,14 +18,29 @@ public partial class MainWindow : Window
 {
     private BpmAudioData? _audioData;
     private int _bgmStream;
-    private int _decodeStream; // kept alive for the lifetime of loaded audio
+    private int _decodeStream;
     private readonly Timer _timeTimer = new(20);
     private bool _isPlaying;
 
-    private WriteableBitmap? _waveBitmap;
-    private WriteableBitmap? _specBitmap;
+    // Cache
+    private WaveformEnvelope? _waveEnvelope;
+    private SpectrogramData? _specCache;
 
-    /// <summary>Resolve localized string at runtime, matching MajdataEdit pattern.</summary>
+    // Viewport
+    private double _viewCenterTime;
+    private double _viewHalfWidth;
+    private volatile bool _renderPending;
+    private bool _plotsConfigured;
+
+    // ScottPlot plottables
+    private ScottPlot.Plottables.VerticalLine? _waveCenterLine;
+    private ScottPlot.Plottables.VerticalLine? _specCenterLine;
+
+    // Drag state
+    private bool _isDragging;
+    private WpfPlot? _dragSourcePlot;
+    private double _dragStartPixelX;
+
     public static string Loc(string key)
     {
         var assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
@@ -41,20 +55,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         ApplyLocalizedTexts();
 
-        _timeTimer.Elapsed += (_, _) =>
-        {
-            if (!_isPlaying || _bgmStream == 0) return;
-            try
-            {
-                var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
-                var time = Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos);
-                Dispatcher.Invoke(() => TimeText.Text = $"{time:F3}s");
-            }
-            catch
-            {
-                // channel may become invalid between check and call
-            }
-        };
+        _timeTimer.Elapsed += OnTimerTick;
         _timeTimer.AutoReset = true;
 
         AllowDrop = true;
@@ -66,7 +67,11 @@ public partial class MainWindow : Window
         Drop += (s, e) =>
         {
             if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-                LoadAudioFile(files[0]);
+            {
+                e.Handled = true;
+                var path = files[0];
+                Dispatcher.BeginInvoke(() => LoadAudioFile(path));
+            }
         };
     }
 
@@ -121,7 +126,7 @@ public partial class MainWindow : Window
         JumpToStart();
     }
 
-    // ── Playback (matching MajdataEdit stream lifecycle) ──
+    // ── Playback ──
 
     private void StopAndFreeStreams()
     {
@@ -152,7 +157,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Create decode+tempo stream once (like MajdataEdit initFromFile)
         _decodeStream = Bass.BASS_StreamCreateFile(filePath, 0L, 0L, BASSFlag.BASS_STREAM_DECODE);
         if (_decodeStream == 0)
         {
@@ -162,6 +166,28 @@ public partial class MainWindow : Window
             return;
         }
         _bgmStream = BassFx.BASS_FX_TempoCreate(_decodeStream, BASSFlag.BASS_FX_FREESOURCE);
+
+        // Show loading indicator
+        PlaceholderText.Visibility = Visibility.Collapsed;
+        LoadingText.Visibility = Visibility.Visible;
+        LoadingText.Text = Loc("Loading");
+        Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, () => { });
+
+        // Compute caches
+        LoadingText.Text = Loc("ComputingWaveform");
+        Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, () => { });
+        _waveEnvelope = PrecomputedAudioData.ComputeWaveform(
+            _audioData.RawSamples, _audioData.Channels, _audioData.Duration);
+
+        LoadingText.Text = Loc("ComputingSpectrogram");
+        Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, () => { });
+        _specCache = PrecomputedAudioData.ComputeSpectrogram(
+            _audioData.FilePath, _audioData.Duration);
+
+        LoadingText.Visibility = Visibility.Collapsed;
+
+        _viewCenterTime = 0;
+        _plotsConfigured = false;
 
         FileNameText.Text = Path.GetFileName(filePath);
         SampleRateText.Text = $"{_audioData.SampleRate} Hz";
@@ -182,14 +208,12 @@ public partial class MainWindow : Window
 
         var active = Bass.BASS_ChannelIsActive(_bgmStream);
 
-        // If paused, resume from current position
         if (active == BASSActive.BASS_ACTIVE_PAUSED)
         {
             Bass.BASS_ChannelPlay(_bgmStream, false);
         }
         else
         {
-            // If at end, seek back to beginning
             var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
             var time = Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos);
             if (_audioData != null && time >= _audioData.Duration - 0.1)
@@ -215,7 +239,6 @@ public partial class MainWindow : Window
     {
         if (_bgmStream == 0) return;
 
-        // If playing, pause first (matching user requirement)
         if (_isPlaying)
         {
             Bass.BASS_ChannelPause(_bgmStream);
@@ -224,32 +247,234 @@ public partial class MainWindow : Window
         }
 
         Bass.BASS_ChannelSetPosition(_bgmStream, 0);
+        _viewCenterTime = 0;
         TimeText.Text = "0.000s";
+        RenderVisuals();
+    }
+
+    // ── Timer: update time + viewport ──
+
+    private void OnTimerTick(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (!_isPlaying || _bgmStream == 0) return;
+        try
+        {
+            var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
+            var time = Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos);
+            _viewCenterTime = time;
+            if (_renderPending) return;
+            _renderPending = true;
+            Dispatcher.BeginInvoke(() =>
+            {
+                TimeText.Text = $"{time:F3}s";
+                RenderVisuals();
+                _renderPending = false;
+            });
+        }
+        catch
+        {
+            // channel may become invalid
+        }
+    }
+
+    // ── ScottPlot Plots ──
+
+    private void SeekBassTo(double seconds)
+    {
+        if (_bgmStream == 0) return;
+        var bytePos = Bass.BASS_ChannelSeconds2Bytes(_bgmStream, seconds);
+        Bass.BASS_ChannelSetPosition(_bgmStream, bytePos);
+    }
+
+    private void SetBothXLimits(double left, double right)
+    {
+        _viewHalfWidth = (right - left) / 2;
+        WaveformPlot.Plot.Axes.SetLimitsX(left, right);
+        SpectrogramPlot.Plot.Axes.SetLimitsX(left, right);
+    }
+
+    private void EnsurePlotsConfigured()
+    {
+        if (_plotsConfigured || _audioData == null || _waveEnvelope == null || _specCache == null) return;
+        _plotsConfigured = true;
+
+        // ── Waveform: single interleaved line ──
+        var wavePlot = WaveformPlot.Plot;
+        wavePlot.Title("");
+
+        int cols = _waveEnvelope.Columns;
+        double[] alt = new double[cols * 2];
+        for (int i = 0; i < cols; i++)
+        {
+            alt[i * 2] = _waveEnvelope.MaxValues[i];
+            alt[i * 2 + 1] = _waveEnvelope.MinValues[i];
+        }
+        var waveSig = wavePlot.Add.Signal(alt);
+        waveSig.Data.Period = _waveEnvelope.TimeStep / 2;
+        waveSig.Color = ScottPlot.Color.FromHex("#00F2FF");
+        waveSig.LineWidth = 1;
+
+        _waveCenterLine = wavePlot.Add.VerticalLine(_viewCenterTime);
+        _waveCenterLine.Color = ScottPlot.Color.FromHex("#00FF88");
+        _waveCenterLine.LineWidth = 2;
+        _waveCenterLine.IsDraggable = false;
+
+        wavePlot.FigureBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
+        wavePlot.DataBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
+        wavePlot.Axes.Color(ScottPlot.Color.FromHex("#333333"));
+        wavePlot.Axes.SetLimitsY(-32768, 32767);
+        wavePlot.Axes.Left.IsVisible = false;
+
+        // ── Spectrogram: Heatmap ──
+        var specPlot = SpectrogramPlot.Plot;
+        specPlot.Title("");
+
+        var heatmapData = ConvertToDouble(_specCache.Magnitudes);
+        var heatmap = specPlot.Add.Heatmap(heatmapData);
+        heatmap.Colormap = new WaveSpectrogramColormap();
+        heatmap.Extent = new CoordinateRect(0, _specCache.Duration, _specCache.FreqBands, 0);
+
+        _specCenterLine = specPlot.Add.VerticalLine(_viewCenterTime);
+        _specCenterLine.Color = ScottPlot.Color.FromHex("#00FF88");
+        _specCenterLine.LineWidth = 2;
+        _specCenterLine.IsDraggable = false;
+
+        specPlot.FigureBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
+        specPlot.DataBackground.Color = ScottPlot.Color.FromHex("#0A0A0A");
+        specPlot.Axes.Color(ScottPlot.Color.FromHex("#333333"));
+        specPlot.Axes.SetLimitsY(_specCache.FreqBands, 0);
+        specPlot.Axes.Left.IsVisible = false;
+
+        // Initial X range: show entire duration
+        SetBothXLimits(0, _audioData.Duration);
+
+        // ── Disable ScottPlot default interaction ──
+        WaveformPlot.UserInputProcessor.IsEnabled = false;
+        SpectrogramPlot.UserInputProcessor.IsEnabled = false;
+
+        // ── Custom mouse events ──
+        WaveformPlot.PreviewMouseLeftButtonDown += OnPlotMouseDown;
+        SpectrogramPlot.PreviewMouseLeftButtonDown += OnPlotMouseDown;
+        WaveformPlot.PreviewMouseMove += OnPlotMouseMove;
+        SpectrogramPlot.PreviewMouseMove += OnPlotMouseMove;
+        WaveformPlot.PreviewMouseLeftButtonUp += OnPlotMouseUp;
+        SpectrogramPlot.PreviewMouseLeftButtonUp += OnPlotMouseUp;
+        WaveformPlot.PreviewMouseWheel += OnPlotMouseWheel;
+        SpectrogramPlot.PreviewMouseWheel += OnPlotMouseWheel;
+
+        // Disable right-click menu
+        WaveformPlot.Menu = null;
+        SpectrogramPlot.Menu = null;
+
+        WaveformPlot.Refresh();
+        SpectrogramPlot.Refresh();
     }
 
     // ── Rendering ──
 
+    private static double[,] ConvertToDouble(float[,] src)
+    {
+        var rows = src.GetLength(0);
+        var cols = src.GetLength(1);
+        var result = new double[rows, cols];
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                result[r, c] = src[r, c];
+        return result;
+    }
+
     private void RenderVisuals()
     {
-        if (_audioData == null) return;
+        if (_audioData == null || _waveEnvelope == null || _specCache == null) return;
 
-        var actualWidth = (int)VizGrid.ActualWidth;
-        var actualHeight = (int)VizGrid.ActualHeight;
-        if (actualWidth <= 0 || actualHeight <= 0) return;
+        if (!_plotsConfigured)
+            EnsurePlotsConfigured();
 
-        var waveHeight = actualHeight / 2;
-        var specHeight = actualHeight - waveHeight;
+        // Keep X axis centered on viewCenterTime
+        double half = _viewHalfWidth;
+        double left = _viewCenterTime - half;
+        double right = _viewCenterTime + half;
+        WaveformPlot.Plot.Axes.SetLimitsX(left, right);
+        SpectrogramPlot.Plot.Axes.SetLimitsX(left, right);
 
-        _waveBitmap = BpmWaveformRenderer.Render(
-            _audioData, actualWidth, waveHeight,
-            Color.FromRgb(0x00, 0xF2, 0xFF),
-            Color.FromRgb(0x0A, 0x0A, 0x0A));
-        WaveformImage.Source = _waveBitmap;
+        // Update center lines
+        if (_waveCenterLine != null) _waveCenterLine.X = _viewCenterTime;
+        if (_specCenterLine != null) _specCenterLine.X = _viewCenterTime;
 
-        _specBitmap = BpmSpectrogramRenderer.Render(
-            _audioData, actualWidth, specHeight);
-        SpectrogramImage.Source = _specBitmap;
-
+        WaveformPlot.Refresh();
+        SpectrogramPlot.Refresh();
         PlaceholderText.Visibility = Visibility.Collapsed;
+    }
+
+    // ── Mouse interaction ──
+
+    private void OnPlotMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var plot = (WpfPlot)sender;
+        _isDragging = true;
+        _dragSourcePlot = plot;
+        _dragStartPixelX = e.GetPosition(plot).X;
+        plot.CaptureMouse();
+
+        // Pause if playing (matches Web behavior)
+        if (_isPlaying) PausePlayback();
+    }
+
+    private void OnPlotMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDragging || _dragSourcePlot == null) return;
+
+        double currentX = e.GetPosition(_dragSourcePlot).X;
+        double delta = currentX - _dragStartPixelX;
+        _dragStartPixelX = currentX;
+
+        SeekByDelta(delta);
+    }
+
+    private void OnPlotMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isDragging) return;
+        _isDragging = false;
+        _dragSourcePlot?.ReleaseMouseCapture();
+        _dragSourcePlot = null;
+    }
+
+    private void SeekByDelta(double deltaPixel)
+    {
+        if (_audioData == null || _dragSourcePlot == null) return;
+        double plotWidth = _dragSourcePlot.ActualWidth;
+        if (plotWidth <= 0) return;
+
+        var limits = _dragSourcePlot.Plot.Axes.GetLimits();
+        double dataSpan = limits.Right - limits.Left;
+        double deltaTime = -deltaPixel * dataSpan / plotWidth;
+
+        _viewCenterTime += deltaTime;
+        _viewCenterTime = Math.Clamp(_viewCenterTime, 0, _audioData.Duration);
+        TimeText.Text = $"{_viewCenterTime:F3}s";
+        SeekBassTo(_viewCenterTime);
+        RenderVisuals();
+    }
+
+    private void OnPlotMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = true;
+        if (_isPlaying) return;
+        ZoomXOnly(e.Delta > 0);
+    }
+
+    private void ZoomXOnly(bool zoomIn)
+    {
+        double factor = zoomIn ? 0.85 : 1.0 / 0.85;
+        double newHalf = _viewHalfWidth * factor;
+
+        // Clamp zoom range
+        if (_audioData != null && newHalf > _audioData.Duration)
+            newHalf = _audioData.Duration;
+        if (newHalf < 0.01)
+            newHalf = 0.01;
+
+        _viewHalfWidth = newHalf;
+        RenderVisuals();
     }
 }
