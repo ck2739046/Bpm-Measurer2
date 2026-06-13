@@ -220,6 +220,8 @@ public partial class MainWindow : Window
 
         _viewCenterTime = 0;
         _plotsConfigured = false;
+        _specConfigured = false;
+        _specBitmap = null;
 
         FileNameText.Text = Path.GetFileName(filePath);
         SampleRateText.Text = $"{_audioData.SampleRate} Hz";
