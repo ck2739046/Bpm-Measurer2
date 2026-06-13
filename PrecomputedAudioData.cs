@@ -76,7 +76,7 @@ public static class PrecomputedAudioData
         const int fftSize = 8192;
         const int numBins = fftSize / 2;
         const int freqBands = 256;          // 纵向分辨率
-        const int columnsPerSecond = 100;   // 横向分辨率
+        const int columnsPerSecond = 200;   // 横向分辨率
         const double logBase = 50.0;
         const int fftDataFlag = (int)BASSData.BASS_DATA_FFT8192; // matches fftSize=8192
 
