@@ -1,4 +1,3 @@
-using MathNet.Numerics;
 using MathNet.Numerics.IntegralTransforms;
 using Un4seen.Bass;
 
@@ -177,7 +176,8 @@ public static class PrecomputedAudioData
                 if (samplesRead < fftSize) return;
 
                 // ── Process columns in this chunk with MathNet FFT ──
-                var complexData = new Complex32[fftSize];
+                var real = new double[fftSize];
+                var imag = new double[fftSize];
                 for (int c = startCol; c < endCol; c++)
                 {
                     int pcmOffset = (int)(c * (long)hopSamples - pcmStartSample);
@@ -188,15 +188,19 @@ public static class PrecomputedAudioData
                         continue;
                     }
 
-                    // Apply Hann window → Complex32
+                    // Apply Hann window → real array (imag zero)
                     for (int i = 0; i < fftSize; i++)
-                        complexData[i] = new Complex32(pcmBuffer[pcmOffset + i] * hannWindow[i], 0);
+                    {
+                        real[i] = pcmBuffer[pcmOffset + i] * hannWindow[i];
+                        imag[i] = 0.0;
+                    }
 
-                    Fourier.Forward(complexData, FourierOptions.NoScaling);
+                    Fourier.Forward(real, imag, FourierOptions.NoScaling);
 
                     for (int b = 0; b < freqBands; b++)
                     {
-                        var mag = complexData[binIndices[b]].Magnitude * invFftSize;
+                        int bin = binIndices[b];
+                        var mag = Math.Sqrt(real[bin] * real[bin] + imag[bin] * imag[bin]) * invFftSize;
                         var db = 20.0 * Math.Log10(mag + 1e-9);
                         outputMagnitudes[b, c] = (float)Math.Clamp((db + 100.0) / 100.0, 0.0, 1.0);
                     }
