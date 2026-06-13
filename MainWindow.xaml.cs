@@ -197,6 +197,19 @@ public partial class MainWindow : Window
             return;
         }
         _bgmStream = BassFx.BASS_FX_TempoCreate(_decodeStream, BASSFlag.BASS_FX_FREESOURCE);
+        if (_bgmStream == 0)
+        {
+            Bass.BASS_StreamFree(_decodeStream);
+            _decodeStream = 0;
+            _audioData = null;
+            _isLoading = false;
+            OpenBtn.IsEnabled = true;
+            PlaceholderText.Visibility = Visibility.Visible;
+            FileNameText.Text = Loc("NoAudio");
+            MessageBox.Show(Loc("LoadError"), Loc("Error"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
 
         // Show loading indicator
         PlaceholderText.Visibility = Visibility.Collapsed;
