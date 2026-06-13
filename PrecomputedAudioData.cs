@@ -88,7 +88,7 @@ public static class PrecomputedAudioData
         var binIndices = new int[freqBands];
         for (int b = 0; b < freqBands; b++)
         {
-            var bandNorm = b / (double)freqBands;
+            var bandNorm = b / (double)(freqBands - 1);
             var binIdx = (int)(((Math.Pow(logBase, bandNorm) - 1.0) / (logBase - 1.0)) * (numBins - 1));
             binIndices[b] = Math.Clamp(binIdx, 0, numBins - 1);
         }
@@ -124,6 +124,19 @@ public static class PrecomputedAudioData
         // Each chunk: 1 Seek + 1 sequential PCM read → in-memory FFT
         var parallelism = PrecomputeParallel.Options.MaxDegreeOfParallelism;
         var chunkColumns = (columns + parallelism - 1) / parallelism;
+
+        // ── Overflow guard: ensure each chunk's sample count fits in int ──
+        long maxChunkSamples = (long)(chunkColumns - 1) * hopSamples + fftSize;
+        if (maxChunkSamples > int.MaxValue || maxChunkSamples * sizeof(float) > int.MaxValue)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"Audio too long ({duration:F1}s, {totalMonoSamples} samples). Cannot process spectrogram.");
+            return new SpectrogramData
+            {
+                FreqBands = freqBands, Columns = 0,
+                TimeStep = timeStep, Duration = duration
+            };
+        }
         var decodeFlags = BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_SAMPLE_FLOAT;
 
         Parallel.For(0, parallelism, PrecomputeParallel.Options, chunkIdx =>
@@ -151,12 +164,16 @@ public static class PrecomputedAudioData
             {
                 // Seek once to chunk start, read entire PCM block sequentially
                 long pcmBytePos = pcmStartSample * sizeof(float);
-                Bass.BASS_ChannelSetPosition(stream, pcmBytePos);
+                if (!Bass.BASS_ChannelSetPosition(stream, pcmBytePos))
+                    return;
 
                 var pcmBuffer = new float[chunkSampleCount];
-                int bytesRead = Bass.BASS_ChannelGetData(stream, pcmBuffer,
-                    chunkSampleCount * sizeof(float));
+                int bytesToRead = chunkSampleCount * sizeof(float);
+                int bytesRead = Bass.BASS_ChannelGetData(stream, pcmBuffer, bytesToRead);
                 int samplesRead = bytesRead / sizeof(float);
+                if (samplesRead < bytesToRead / sizeof(float))
+                    System.Diagnostics.Debug.WriteLine(
+                        $"Partial read: got {samplesRead}/{chunkSampleCount} samples in chunk {chunkIdx}");
                 if (samplesRead < fftSize) return;
 
                 // ── Process columns in this chunk with MathNet FFT ──
