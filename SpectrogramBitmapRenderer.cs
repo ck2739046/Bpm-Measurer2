@@ -21,7 +21,7 @@ public static class SpectrogramBitmapRenderer
 
         // Compute data range exactly as ScottPlot's Heatmap.Update() does
         var range = ComputeRange(data.Magnitudes);
-        var colormap = new WaveSpectrogramColormap();
+        var lut = WaveSpectrogramColormap.Lut;
 
         // Fill a managed pixel buffer in parallel, then copy to back buffer in one shot.
         var pixels = new int[w * h];
@@ -32,8 +32,7 @@ public static class SpectrogramBitmapRenderer
             for (int x = 0; x < w; x++)
             {
                 double fraction = range.Normalize(data.Magnitudes[srcY, x], true);
-                var spColor = colormap.GetColor(fraction);
-                pixels[rowOffset + x] = unchecked((int)spColor.ARGB);
+                pixels[rowOffset + x] = lut[(int)(fraction * 255)];
             }
         });
 
