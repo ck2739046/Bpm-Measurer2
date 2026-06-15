@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -23,13 +22,6 @@ public partial class MainWindow : Window
     private volatile int _decodeStream;
     private volatile bool _isPlaying;
     private volatile bool _isLoading;
-
-    private readonly Stopwatch _frameClock = Stopwatch.StartNew();
-
-    // FPS tracking
-    private int _fpsFrameCount;
-    private double _lastFpsUpdateTime;
-    private double _currentFps;
 
     // Cache
     private WaveformEnvelope? _waveEnvelope;
@@ -177,7 +169,6 @@ public partial class MainWindow : Window
         SpectrogramCanvas.Visibility = Visibility.Collapsed;
         SampleRateText.Text = "-";
         DurationText.Text = "-";
-        ChannelsText.Text = "-";
 
         var audioData = await Task.Run(() => BpmAudioLoader.Load(filePath));
         if (audioData == null)
@@ -248,13 +239,7 @@ public partial class MainWindow : Window
         FileNameText.Text = Path.GetFileName(filePath);
         SampleRateText.Text = $"{_audioData.SampleRate} Hz";
         DurationText.Text = $"{_audioData.Duration:F2}s";
-        ChannelsText.Text = _audioData.Channels.ToString();
         TimeText.Text = "0.000s";
-        FpsText.Text = "FPS: -";
-
-        // Reset FPS tracking
-        _fpsFrameCount = 0;
-        _lastFpsUpdateTime = _frameClock.Elapsed.TotalSeconds;
 
         PlayPauseBtn.IsEnabled = true;
         StopBtn.IsEnabled = true;
@@ -485,17 +470,7 @@ public partial class MainWindow : Window
         // Spectrogram — only transform, no bitmap regeneration
         UpdateSpectrogramTransform();
 
-        // ── FPS calculation ──
-        _fpsFrameCount++;
-        double now = _frameClock.Elapsed.TotalSeconds;
-        double elapsed = now - _lastFpsUpdateTime;
-        if (elapsed >= 1)
-        {
-            _currentFps = _fpsFrameCount / elapsed;
-            _fpsFrameCount = 0;
-            _lastFpsUpdateTime = now;
-            FpsText.Text = $"FPS: {_currentFps:F0}";
-        }
+
     }
 
     // ── Mouse interaction ──

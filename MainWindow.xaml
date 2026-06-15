@@ -4,7 +4,7 @@
         xmlns:lex="http://wpflocalizeextension.codeplex.com"
         xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         lex:LocalizeDictionary.DesignCulture="zh-CN"
-        lex:ResxLocalizationProvider.DefaultAssembly="BpmMeasurer.Wpf"
+        lex:ResxLocalizationProvider.DefaultAssembly="Bpm Measurer"
         lex:ResxLocalizationProvider.DefaultDictionary="Langs"
         Title="{lex:Loc WindowTitle}" Height="600" Width="900"
         WindowStartupLocation="CenterScreen"
@@ -135,14 +135,7 @@
                         <Run Text="{lex:Loc Duration}"/>
                         <Run x:Name="DurationText" Text="-"/>
                     </TextBlock>
-                    <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center" Margin="20,0,0,0">
-                        <Run Text="{lex:Loc Channels}"/>
-                        <Run x:Name="ChannelsText" Text="-"/>
-                    </TextBlock>
                 </StackPanel>
-                <TextBlock x:Name="FpsText" HorizontalAlignment="Right"
-                           Foreground="#FF555555" FontSize="11" VerticalAlignment="Center"
-                           Text="FPS: -"/>
             </Grid>
         </Border>
     </Grid>
