@@ -19,24 +19,22 @@ public static class SpectrogramBitmapRenderer
         int h = data.FreqBands;
         var bmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
 
-        // Compute data range exactly as ScottPlot's Heatmap.Update() does
-        var range = ComputeRange(data.Magnitudes);
         var lut = WaveSpectrogramColormap.Lut;
 
         // Y-axis exponential remap (merged with Y-flip) — eliminates the ~60MB resampled array
         // that was previously allocated in PrecomputedAudioData.ComputeSpectrogram.
-        // yExp > 1.0 compresses lower visual rows toward low source bands, giving more
-        // vertical space to bass frequencies for readability.
         const double yExp = 1.8;
         int maxSrcIndex = h - 1;
 
-        // Fill a managed pixel buffer in parallel, then copy to back buffer in one shot.
+        // ── Phase 1: parallel min/max over raw magnitudes (cheap comparison, no Y remap) ──
+        var mags = data.Magnitudes;
+        var range = ComputeRangeParallel(mags);
+
+        // ── Phase 2: parallel pixel fill using the computed range ──
         var pixels = new int[w * h];
         Parallel.For(0, h, PrecomputeParallel.Options, y =>
         {
-            // Bitmap row 0 = top = high frequency → want high source band index.
-            // Flipped visual row: 0 = bottom (low freq), h-1 = top (high freq).
-            double visualNorm = (h - 1.0 - y) / maxSrcIndex;
+            double visualNorm = (h - 1.0 - y) / (double)maxSrcIndex;
             double srcBandFloat = Math.Pow(visualNorm, yExp) * maxSrcIndex;
             int srcLo = (int)srcBandFloat;
             int srcHi = Math.Min(srcLo + 1, maxSrcIndex);
@@ -46,13 +44,14 @@ public static class SpectrogramBitmapRenderer
             int rowOffset = y * w;
             for (int x = 0; x < w; x++)
             {
-                float mag = data.Magnitudes[srcLo, x] * oneMinusFrac
-                          + data.Magnitudes[srcHi, x] * frac;
+                float mag = mags[srcLo, x] * oneMinusFrac
+                          + mags[srcHi, x] * frac;
                 double fraction = range.Normalize(mag, true);
                 pixels[rowOffset + x] = lut[(int)(fraction * 255)];
             }
         });
 
+        // ── Phase 3: single blit to GPU back buffer ──
         bmp.Lock();
         try
         {
@@ -67,19 +66,46 @@ public static class SpectrogramBitmapRenderer
         return bmp;
     }
 
-    private static ScottPlot.Range ComputeRange(float[,] magnitudes)
+    /// <summary>
+    /// Parallel chunked min/max over raw magnitudes. Local per-thread reduction
+    /// followed by a sequential global merge (O(threads), negligible).
+    /// Replaces the original single-threaded O(h·w) scan.
+    /// </summary>
+    internal static ScottPlot.Range ComputeRangeParallel(float[,] mags)
     {
-        double min = double.MaxValue;
-        double max = double.MinValue;
-        int h = magnitudes.GetLength(0);
-        int w = magnitudes.GetLength(1);
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
+        int h = mags.GetLength(0);
+        int w = mags.GetLength(1);
+        int parallelism = PrecomputeParallel.Options.MaxDegreeOfParallelism;
+        var localRange = new (double Min, double Max)[parallelism];
+        int chunkRows = (h + parallelism - 1) / parallelism;
+
+        Parallel.For(0, parallelism, PrecomputeParallel.Options, tid =>
+        {
+            int yStart = tid * chunkRows;
+            int yEnd = Math.Min(yStart + chunkRows, h);
+            if (yStart >= yEnd) { localRange[tid] = (0, 0); return; }
+
+            double locMin = double.MaxValue;
+            double locMax = double.MinValue;
+            for (int y = yStart; y < yEnd; y++)
             {
-                double v = magnitudes[y, x];
-                if (v < min) min = v;
-                if (v > max) max = v;
+                for (int x = 0; x < w; x++)
+                {
+                    float v = mags[y, x];
+                    if (v < locMin) locMin = v;
+                    if (v > locMax) locMax = v;
+                }
             }
-        return new ScottPlot.Range(min, max);
+            localRange[tid] = (locMin, locMax);
+        });
+
+        double globalMin = localRange[0].Min;
+        double globalMax = localRange[0].Max;
+        for (int i = 1; i < parallelism; i++)
+        {
+            if (localRange[i].Min < globalMin) globalMin = localRange[i].Min;
+            if (localRange[i].Max > globalMax) globalMax = localRange[i].Max;
+        }
+        return new ScottPlot.Range(globalMin, globalMax);
     }
 }
