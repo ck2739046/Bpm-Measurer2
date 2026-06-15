@@ -13,7 +13,7 @@ using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Fx;
 using WPFLocalizeExtension.Extensions;
 
-namespace BpmMeasurer.Wpf;
+namespace BpmMeasurer;
 
 public partial class MainWindow : Window
 {

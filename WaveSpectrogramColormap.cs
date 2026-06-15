@@ -1,6 +1,6 @@
 using ScottPlot;
 
-namespace BpmMeasurer.Wpf;
+namespace BpmMeasurer;
 
 /// <summary>
 /// 7-segment colormap: black → rich blue → turquoise → warm gold (peak) → vivid orange → deep red → purple.

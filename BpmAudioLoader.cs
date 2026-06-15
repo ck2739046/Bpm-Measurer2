@@ -1,6 +1,6 @@
 using Un4seen.Bass;
 
-namespace BpmMeasurer.Wpf;
+namespace BpmMeasurer;
 
 public class BpmAudioData
 {

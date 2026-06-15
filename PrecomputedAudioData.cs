@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Un4seen.Bass;
 
-namespace BpmMeasurer.Wpf;
+namespace BpmMeasurer;
 
 internal static class PrecomputeParallel
 {

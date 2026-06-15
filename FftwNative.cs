@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace BpmMeasurer.Wpf;
+namespace BpmMeasurer;
 
 public static class FftwNative
 {

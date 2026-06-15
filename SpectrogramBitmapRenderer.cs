@@ -4,7 +4,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ScottPlot;
 
-namespace BpmMeasurer.Wpf;
+namespace BpmMeasurer;
 
 /// <summary>
 /// Converts a <see cref="SpectrogramData"/> to a <see cref="WriteableBitmap"/>.

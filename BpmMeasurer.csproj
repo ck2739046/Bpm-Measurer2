@@ -5,7 +5,10 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UseWPF>true</UseWPF>
-        <RootNamespace>BpmMeasurer.Wpf</RootNamespace>
+        <RootNamespace>BpmMeasurer</RootNamespace>
+
+        <!-- 避免 warning NU1900: 获取包漏洞数据时出错: 无法加载源 https://api.nuget.org/v3/index.json 的服务索引。 -->
+        <NuGetAudit>false</NuGetAudit>
 
         <ApplicationIcon>icon\icon.ico</ApplicationIcon>
         <!-- 输出文件名：Bpm Measurer.exe -->
@@ -46,7 +49,7 @@
         <EmbeddedResource Update="Langs\Langs.resx">
             <StronglyTypedFileName>$(IntermediateOutputPath)Langs.Designer.cs</StronglyTypedFileName>
             <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
-            <StronglyTypedNamespace>BpmMeasurer.Wpf.Langs</StronglyTypedNamespace>
+            <StronglyTypedNamespace>BpmMeasurer.Langs</StronglyTypedNamespace>
             <StronglyTypedClassName>Langs</StronglyTypedClassName>
         </EmbeddedResource>
     </ItemGroup>
