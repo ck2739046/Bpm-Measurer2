@@ -1,4 +1,4 @@
-using MathNet.Numerics.IntegralTransforms;
+using System.Runtime.InteropServices;
 using Un4seen.Bass;
 
 namespace BpmMeasurer.Wpf;
@@ -138,6 +138,21 @@ public static class PrecomputedAudioData
         }
         var decodeFlags = BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_SAMPLE_FLOAT;
 
+        // ── Create shared FFTW plan (planner is NOT thread-safe) ──
+        UIntPtr planInputBytes = (UIntPtr)(fftSize * sizeof(float));
+        UIntPtr planOutputBytes = (UIntPtr)((fftSize + 2) * sizeof(float));
+        IntPtr planIn = FftwNative.fftwf_malloc(planInputBytes);
+        IntPtr planOut = FftwNative.fftwf_malloc(planOutputBytes);
+        IntPtr sharedPlan = FftwNative.fftwf_plan_dft_r2c_1d(fftSize, planIn, planOut, FftwNative.FFTW_ESTIMATE);
+        try
+        {
+            if (sharedPlan == IntPtr.Zero)
+                return new SpectrogramData
+                {
+                    FreqBands = freqBands, Columns = 0,
+                    TimeStep = timeStep, Duration = duration
+                };
+
         Parallel.For(0, parallelism, PrecomputeParallel.Options, chunkIdx =>
         {
             int startCol = chunkIdx * chunkColumns;
@@ -170,40 +185,59 @@ public static class PrecomputedAudioData
                 int bytesToRead = chunkSampleCount * sizeof(float);
                 int bytesRead = Bass.BASS_ChannelGetData(stream, pcmBuffer, bytesToRead);
                 int samplesRead = bytesRead / sizeof(float);
-                if (samplesRead < bytesToRead / sizeof(float))
-                    System.Diagnostics.Debug.WriteLine(
-                        $"Partial read: got {samplesRead}/{chunkSampleCount} samples in chunk {chunkIdx}");
                 if (samplesRead < fftSize) return;
 
-                // ── Process columns in this chunk with MathNet FFT ──
-                var real = new double[fftSize];
-                var imag = new double[fftSize];
-                for (int c = startCol; c < endCol; c++)
+                // ── Per-thread FFTW buffers (thread-safe new-array execute) ──
+                UIntPtr inputBytes = (UIntPtr)(fftSize * sizeof(float));
+                UIntPtr outputBytes = (UIntPtr)((fftSize + 2) * sizeof(float));
+                IntPtr fftIn = FftwNative.fftwf_malloc(inputBytes);
+                IntPtr fftOut = FftwNative.fftwf_malloc(outputBytes);
+                if (fftIn == IntPtr.Zero || fftOut == IntPtr.Zero)
                 {
-                    int pcmOffset = (int)(c * (long)hopSamples - pcmStartSample);
-                    if (pcmOffset < 0 || pcmOffset + fftSize > samplesRead)
+                    FftwNative.fftwf_free(fftIn);
+                    FftwNative.fftwf_free(fftOut);
+                    return;
+                }
+
+                var fftInBuf = new float[fftSize];
+                var fftOutBuf = new float[fftSize + 2];
+
+                try
+                {
+                    for (int c = startCol; c < endCol; c++)
                     {
+                        int pcmOffset = (int)(c * (long)hopSamples - pcmStartSample);
+                        if (pcmOffset < 0 || pcmOffset + fftSize > samplesRead)
+                        {
+                            for (int b = 0; b < freqBands; b++)
+                                outputMagnitudes[b, c] = 0;
+                            continue;
+                        }
+
+                        // Apply Hann window → managed input buffer → FFTW input
+                        for (int i = 0; i < fftSize; i++)
+                            fftInBuf[i] = pcmBuffer[pcmOffset + i] * hannWindow[i];
+                        Marshal.Copy(fftInBuf, 0, fftIn, fftSize);
+
+                        FftwNative.fftwf_execute_dft_r2c(sharedPlan, fftIn, fftOut);
+
+                        // Pull interleaved complex output back to managed buffer
+                        Marshal.Copy(fftOut, fftOutBuf, 0, fftSize + 2);
                         for (int b = 0; b < freqBands; b++)
-                            outputMagnitudes[b, c] = 0;
-                        continue;
+                        {
+                            int bin = binIndices[b];
+                            float re = fftOutBuf[2 * bin];
+                            float im = fftOutBuf[2 * bin + 1];
+                            float mag = MathF.Sqrt(re * re + im * im) * invFftSize;
+                            float db = 20f * MathF.Log10(mag + 1e-9f);
+                            outputMagnitudes[b, c] = Math.Clamp((db + 100f) / 100f, 0f, 1f);
+                        }
                     }
-
-                    // Apply Hann window → real array (imag zero)
-                    for (int i = 0; i < fftSize; i++)
-                    {
-                        real[i] = pcmBuffer[pcmOffset + i] * hannWindow[i];
-                        imag[i] = 0.0;
-                    }
-
-                    Fourier.Forward(real, imag, FourierOptions.NoScaling);
-
-                    for (int b = 0; b < freqBands; b++)
-                    {
-                        int bin = binIndices[b];
-                        var mag = Math.Sqrt(real[bin] * real[bin] + imag[bin] * imag[bin]) * invFftSize;
-                        var db = 20.0 * Math.Log10(mag + 1e-9);
-                        outputMagnitudes[b, c] = (float)Math.Clamp((db + 100.0) / 100.0, 0.0, 1.0);
-                    }
+                }
+                finally
+                {
+                    FftwNative.fftwf_free(fftIn);
+                    FftwNative.fftwf_free(fftOut);
                 }
             }
             finally
@@ -212,6 +246,13 @@ public static class PrecomputedAudioData
                     Bass.BASS_StreamFree(stream);
             }
         });
+        }
+        finally
+        {
+            FftwNative.fftwf_destroy_plan(sharedPlan);
+            FftwNative.fftwf_free(planIn);
+            FftwNative.fftwf_free(planOut);
+        }
 
         // ── Y-axis resampling deferred to renderer (merged with Y-flip to save ~60MB) ──
         return new SpectrogramData
