@@ -97,6 +97,14 @@ public partial class MainWindow : Window
     {
         var handle = new WindowInteropHelper(this).Handle;
         Bass.BASS_Init(-1, 44100, BASSInit.BASS_DEVICE_DEFAULT, handle);
+
+        // 启动时若指定了音频(--audio= 或位置参数),自动加载。
+        // 延后一帧:确保 BASS_Init 已完成、UI 控件布局就绪,避免在 Loaded 同步栈中阻塞。
+        var startupPath = App.StartupAudioPath;
+        if (!string.IsNullOrEmpty(startupPath))
+        {
+            Dispatcher.BeginInvoke(new Action(() => LoadAudioFile(startupPath)));
+        }
     }
 
     private void Window_Closed(object sender, EventArgs e)
