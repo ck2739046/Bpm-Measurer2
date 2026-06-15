@@ -23,15 +23,32 @@ public static class SpectrogramBitmapRenderer
         var range = ComputeRange(data.Magnitudes);
         var lut = WaveSpectrogramColormap.Lut;
 
+        // Y-axis exponential remap (merged with Y-flip) — eliminates the ~60MB resampled array
+        // that was previously allocated in PrecomputedAudioData.ComputeSpectrogram.
+        // yExp > 1.0 compresses lower visual rows toward low source bands, giving more
+        // vertical space to bass frequencies for readability.
+        const double yExp = 1.8;
+        int maxSrcIndex = h - 1;
+
         // Fill a managed pixel buffer in parallel, then copy to back buffer in one shot.
         var pixels = new int[w * h];
         Parallel.For(0, h, PrecomputeParallel.Options, y =>
         {
-            int srcY = h - 1 - y; // Flip Y: bitmap row 0 = top = highest frequency
+            // Bitmap row 0 = top = high frequency → want high source band index.
+            // Flipped visual row: 0 = bottom (low freq), h-1 = top (high freq).
+            double visualNorm = (h - 1.0 - y) / maxSrcIndex;
+            double srcBandFloat = Math.Pow(visualNorm, yExp) * maxSrcIndex;
+            int srcLo = (int)srcBandFloat;
+            int srcHi = Math.Min(srcLo + 1, maxSrcIndex);
+            float frac = (float)(srcBandFloat - srcLo);
+            float oneMinusFrac = 1f - frac;
+
             int rowOffset = y * w;
             for (int x = 0; x < w; x++)
             {
-                double fraction = range.Normalize(data.Magnitudes[srcY, x], true);
+                float mag = data.Magnitudes[srcLo, x] * oneMinusFrac
+                          + data.Magnitudes[srcHi, x] * frac;
+                double fraction = range.Normalize(mag, true);
                 pixels[rowOffset + x] = lut[(int)(fraction * 255)];
             }
         });

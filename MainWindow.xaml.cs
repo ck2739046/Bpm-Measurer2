@@ -227,7 +227,7 @@ public partial class MainWindow : Window
         await Task.Run(() =>
         {
             _waveEnvelope = PrecomputedAudioData.ComputeWaveform(
-                _audioData.RawSamples, _audioData.Channels, _audioData.Duration);
+                _audioData.RawSamples, _audioData.Duration);
         });
         _audioData.RawSamples = null!; // Free ~50MB+ for long audio, no longer needed
 

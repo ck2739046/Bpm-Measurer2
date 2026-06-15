@@ -213,27 +213,10 @@ public static class PrecomputedAudioData
             }
         });
 
-        // ── Parallel Y-axis resampling ──
-        const double yExp = 1.8;
-        var resampled = new float[freqBands, columns];
-        Parallel.For(0, freqBands, PrecomputeParallel.Options, y =>
-        {
-            var visualNorm = y / (double)(freqBands - 1);
-            var srcBandFloat = Math.Pow(visualNorm, yExp) * (freqBands - 1);
-            var srcLo = (int)srcBandFloat;
-            var srcHi = Math.Min(srcLo + 1, freqBands - 1);
-            var frac = srcBandFloat - srcLo;
-
-            for (int c = 0; c < columns; c++)
-            {
-                resampled[y, c] = outputMagnitudes[srcLo, c] * (float)(1.0 - frac)
-                                + outputMagnitudes[srcHi, c] * (float)frac;
-            }
-        });
-
+        // ── Y-axis resampling deferred to renderer (merged with Y-flip to save ~60MB) ──
         return new SpectrogramData
         {
-            Magnitudes = resampled,
+            Magnitudes = outputMagnitudes,
             FreqBands = freqBands,
             Columns = columns,
             TimeStep = timeStep,
