@@ -37,10 +37,10 @@ public static class PrecomputedAudioData
 {
     private static readonly object StreamLock = new();
 
-    public static WaveformEnvelope ComputeWaveform(short[] rawSamples, int channels, double duration)
+    public static WaveformEnvelope ComputeWaveform(short[] monoSamples, double duration)
     {
         const int columnsPerSecond = 100;
-        var totalFrames = rawSamples.Length / Math.Max(1, channels);
+        var totalFrames = monoSamples.Length; // 已下混为 mono，长度即帧数
         var columns = Math.Max(1, (int)(duration * columnsPerSecond));
         var framesPerColumn = Math.Max(1, totalFrames / columns);
 
@@ -49,13 +49,13 @@ public static class PrecomputedAudioData
 
         Parallel.For(0, columns, PrecomputeParallel.Options, c =>
         {
-            var startFrame = c * framesPerColumn;
-            var endFrame = Math.Min(startFrame + framesPerColumn, totalFrames);
+            int startFrame = c * framesPerColumn;
+            int endFrame = Math.Min(startFrame + framesPerColumn, totalFrames);
             short colMin = 0, colMax = 0;
 
             for (int f = startFrame; f < endFrame; f++)
             {
-                var val = rawSamples[f * channels];
+                short val = monoSamples[f];
                 if (val < colMin) colMin = val;
                 if (val > colMax) colMax = val;
             }
