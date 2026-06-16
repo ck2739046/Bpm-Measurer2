@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
@@ -7,9 +7,9 @@
   <data name="WindowTitle" xml:space="preserve"><value>BPM Measurer</value></data>
   <data name="ImportAudio" xml:space="preserve"><value>Import Audio</value></data>
   <data name="NoAudio" xml:space="preserve"><value>No audio loaded</value></data>
-  <data name="Play" xml:space="preserve"><value>▶ Play</value></data>
-  <data name="Pause" xml:space="preserve"><value>⏸ Pause</value></data>
-  <data name="JumpToStart" xml:space="preserve"><value>⏮ Start</value></data>
+  <data name="Play" xml:space="preserve"><value>Play</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="JumpToStart" xml:space="preserve"><value>Start</value></data>
   <data name="SelectAudioFile" xml:space="preserve"><value>Select Audio File</value></data>
   <data name="AudioFiles" xml:space="preserve"><value>Audio Files</value></data>
   <data name="AllFiles" xml:space="preserve"><value>All Files</value></data>
@@ -21,4 +21,8 @@
   <data name="Channels" xml:space="preserve"><value>Channels: </value></data>
   <data name="Loading" xml:space="preserve"><value>Loading...</value></data>
   <data name="LoadingAudio" xml:space="preserve"><value>Loading audio...</value></data>
+  <data name="GlobalOffset_Label" xml:space="preserve"><value>Global Offset</value></data>
+  <data name="Bpm_Label" xml:space="preserve"><value>BPM</value></data>
+  <data name="ImportConfig_Btn" xml:space="preserve"><value>Import Config</value></data>
+  <data name="ExportConfig_Btn" xml:space="preserve"><value>Export Config</value></data>
 </root>

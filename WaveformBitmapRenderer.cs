@@ -20,10 +20,8 @@ public static class WaveformBitmapRenderer
     /// </summary>
     public const int BitmapHeight = 256;
 
-    // Cyan #00F2FF, fully opaque. Pbgra32 stores premultiplied ARGB; for A=255
-    // premultiplication is a no-op, so this constant matches the spectrogram LUT
-    // format produced by WaveSpectrogramColormap.
-    private const int WaveColor = unchecked((int)0xFF00F2FF);
+    // Very light red, fully opaque.
+    private const int WaveColor = unchecked((int)0xFFFF7777);
 
     private const double ShortMin = -32768.0;
     private const double ShortMax = 32767.0;
