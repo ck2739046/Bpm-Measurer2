@@ -375,6 +375,9 @@ public partial class MainWindow : Window
             _waveBitmap = WaveformBitmapRenderer.Create(_waveEnvelope);
             WaveformImage.Source = _waveBitmap;
 
+            WaveformCanvas.Visibility = Visibility.Visible;
+            WaveformCanvas.UpdateLayout(); // force layout so ActualWidth/Height are valid
+
             // Fit playhead to canvas height
             WavePlayheadLine.Y2 = WaveformCanvas.ActualHeight;
 
@@ -385,8 +388,6 @@ public partial class MainWindow : Window
             WaveformCanvas.PreviewMouseMove += OnCanvasMouseMove;
             WaveformCanvas.PreviewMouseLeftButtonUp += OnCanvasMouseUp;
             WaveformCanvas.PreviewMouseWheel += OnPlotMouseWheel;
-
-            WaveformCanvas.Visibility = Visibility.Visible;
         }
 
         if (!_specConfigured)
@@ -402,6 +403,9 @@ public partial class MainWindow : Window
             _specBitmap = SpectrogramBitmapRenderer.Create(_specCache);
             SpectrogramImage.Source = _specBitmap;
 
+            SpectrogramCanvas.Visibility = Visibility.Visible;
+            SpectrogramCanvas.UpdateLayout(); // force layout so ActualWidth/Height are valid
+
             // Fit canvas height
             SpecPlayheadLine.Y2 = SpectrogramCanvas.ActualHeight;
 
@@ -409,8 +413,6 @@ public partial class MainWindow : Window
             SpectrogramCanvas.PreviewMouseMove += OnCanvasMouseMove;
             SpectrogramCanvas.PreviewMouseLeftButtonUp += OnCanvasMouseUp;
             SpectrogramCanvas.PreviewMouseWheel += OnPlotMouseWheel;
-
-            SpectrogramCanvas.Visibility = Visibility.Visible;
         }
     }
 
