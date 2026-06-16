@@ -136,6 +136,9 @@
                         <Run x:Name="DurationText" Text="-"/>
                     </TextBlock>
                 </StackPanel>
+                <TextBlock x:Name="FpsText" HorizontalAlignment="Right"
+                           Foreground="#FF555555" FontSize="11" VerticalAlignment="Center"
+                           Text="FPS: -"/>
             </Grid>
         </Border>
     </Grid>

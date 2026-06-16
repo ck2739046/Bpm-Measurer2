@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -22,6 +23,13 @@ public partial class MainWindow : Window
     private volatile int _decodeStream;
     private volatile bool _isPlaying;
     private volatile bool _isLoading;
+
+    private readonly Stopwatch _frameClock = Stopwatch.StartNew();
+
+    // FPS tracking
+    private int _fpsFrameCount;
+    private double _lastFpsUpdateTime;
+    private double _currentFps;
 
     // Cache
     private WaveformEnvelope? _waveEnvelope;
@@ -240,6 +248,11 @@ public partial class MainWindow : Window
         SampleRateText.Text = $"{_audioData.SampleRate} Hz";
         DurationText.Text = $"{_audioData.Duration:F2}s";
         TimeText.Text = "0.000s";
+        FpsText.Text = "FPS: -";
+
+        // Reset FPS tracking
+        _fpsFrameCount = 0;
+        _lastFpsUpdateTime = _frameClock.Elapsed.TotalSeconds;
 
         PlayPauseBtn.IsEnabled = true;
         StopBtn.IsEnabled = true;
@@ -283,6 +296,7 @@ public partial class MainWindow : Window
             Bass.BASS_ChannelPause(_bgmStream);
         _isPlaying = false;
         PlayPauseBtn.Content = Loc("Play");
+        FpsText.Text = "FPS: -";
     }
 
     private void JumpToStart()
@@ -470,7 +484,24 @@ public partial class MainWindow : Window
         // Spectrogram — only transform, no bitmap regeneration
         UpdateSpectrogramTransform();
 
-
+        // ── FPS calculation ──
+        if (_isPlaying)
+        {
+            _fpsFrameCount++;
+            double now = _frameClock.Elapsed.TotalSeconds;
+            double elapsed = now - _lastFpsUpdateTime;
+            if (elapsed >= 0.3)
+            {
+                _currentFps = _fpsFrameCount / elapsed;
+                _fpsFrameCount = 0;
+                _lastFpsUpdateTime = now;
+                FpsText.Text = $"FPS: {_currentFps:F0}";
+            }
+        }
+        else
+        {
+            FpsText.Text = "FPS: -";
+        }
     }
 
     // ── Mouse interaction ──
