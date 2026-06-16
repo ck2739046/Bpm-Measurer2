@@ -51,13 +51,9 @@ public partial class StepperInput : UserControl
         for (int i = 0; i < n; i++)
             RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // Color palette selection: 3 -> deep,mid,light ; 2 -> deep,mid ; 1 -> mid
-        List<string> palette = n switch
-        {
-            1 => new List<string> { Palette[1] },
-            2 => new List<string> { Palette[0], Palette[1] },
-            _ => new List<string> { Palette[0], Palette[1], Palette[2] }
-        };
+        // Palette selection (outermost -> innermost): always take the n colors closest to the input.
+        // 3 -> deep, mid, light ; 2 -> mid, light ; 1 -> light.
+        List<string> palette = Palette.Skip(3 - n).Take(n).ToList();
 
         // Left buttons: i=0 is outermost (largest step). Decrease.
         for (int i = 0; i < n; i++)
