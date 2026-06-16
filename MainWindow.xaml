@@ -109,7 +109,7 @@
         <Grid Grid.Row="1" Background="#FF0A0A0A">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="300"/>
             </Grid.ColumnDefinitions>
 
             <!-- Column 0: Visualization Area with sub-grid -->
@@ -289,7 +289,7 @@
                             </Grid>
 
                             <!-- Scrollable segment list (built dynamically) -->
-                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden">
                                 <StackPanel x:Name="SegmentListPanel"/>
                             </ScrollViewer>
                         </Grid>

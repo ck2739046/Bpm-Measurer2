@@ -583,7 +583,7 @@ public partial class MainWindow : Window
 
     private void UpdateRawBpm(Guid id, double bpm)
     {
-        bpm = Math.Clamp(Math.Round(bpm * 100.0) / 100.0, 10, 1000);
+        bpm = Math.Clamp(Math.Round(bpm * 1000.0) / 1000.0, 10, 1000);
         for (int i = 0; i < _rawPoints.Count; i++)
         {
             if (_rawPoints[i].Id == id)
@@ -686,8 +686,8 @@ public partial class MainWindow : Window
 
             // Beat + BPM inputs
             var inputsGrid = new Grid();
-            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10, GridUnitType.Star) });
+            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(23, GridUnitType.Star) });
             Grid.SetRow(inputsGrid, 2);
             Grid.SetColumnSpan(inputsGrid, 2);
             grid.Children.Add(inputsGrid);
@@ -711,7 +711,7 @@ public partial class MainWindow : Window
 
             var bpmPanel = BuildSegmentStepper(
                 "BPM",
-                new[] { 10.0, 1.0, 0.1 }, 10, 1000, 2,
+                new[] { 10.0, 1.0, 0.1 }, 10, 1000, 3,
                 Color.FromRgb(0x00, 0xF2, 0xFF),
                 point.Id, false, point.Bpm, 1,
                 v => UpdateRawBpm(point.Id, v));
