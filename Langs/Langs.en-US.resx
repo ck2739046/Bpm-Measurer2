@@ -33,4 +33,13 @@
   <data name="Segment_Illegal" xml:space="preserve"><value>beyond audio end</value></data>
   <data name="ConfigImport_Failed" xml:space="preserve"><value>Failed to parse config file.</value></data>
   <data name="ConfigExport_Failed" xml:space="preserve"><value>Failed to write config file.</value></data>
+  <data name="ConfigImport_Err_NoOffset" xml:space="preserve"><value>Missing or invalid global_offset</value></data>
+  <data name="ConfigImport_Err_DuplicateOffset" xml:space="preserve"><value>global_offset may appear only once</value></data>
+  <data name="ConfigImport_Err_NegativeOffset" xml:space="preserve"><value>global_offset must not be negative</value></data>
+  <data name="ConfigImport_Err_NoSegment" xml:space="preserve"><value>At least 1 bpm segment is required</value></data>
+  <data name="ConfigImport_Err_MalformedSegment" xml:space="preserve"><value>Segment {0} is missing beat_index or bpm</value></data>
+  <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>Segment {0}: beat_index is not a non-negative integer</value></data>
+  <data name="ConfigImport_Err_BadBpm" xml:space="preserve"><value>Segment {0}: bpm is not a non-negative number</value></data>
+  <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index not in ascending order (segment {0})</value></data>
+  <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>The first bpm segment must have beat_index = 0</value></data>
 </root>

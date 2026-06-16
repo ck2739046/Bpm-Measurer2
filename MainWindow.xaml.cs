@@ -1359,32 +1359,12 @@ public partial class MainWindow : Window
         {
             var text = File.ReadAllText(dlg.FileName);
 
-            // global_offset = xxx
-            var offsetMatch = Regex.Match(text,
-                @"global_offset\s*=\s*(-?\d+(?:\.\d+)?)", RegexOptions.IgnoreCase);
-            if (!offsetMatch.Success) throw new FormatException("missing global_offset");
-            double offset = double.Parse(offsetMatch.Groups[1].Value, CultureInfo.InvariantCulture);
-
-            // beat_index = xxx, bpm = xxx
-            var segMatches = Regex.Matches(text,
-                @"beat_index\s*=\s*(-?\d+)\s*,\s*bpm\s*=\s*(\d+(?:\.\d+)?)",
-                RegexOptions.IgnoreCase);
-
-            var points = new List<RawTimingPoint>();
-            foreach (Match m in segMatches)
+            if (!TryParseConfig(text, out double offset, out List<RawTimingPoint> points, out string? error))
             {
-                long beat = long.Parse(m.Groups[1].Value);
-                double bpm = double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
-                bpm = Math.Clamp(bpm, 10, 1000);
-                // Imported points have no frozen cap (editable up to the dynamic limit on edit).
-                points.Add(new RawTimingPoint(Guid.NewGuid(), Math.Max(0, beat), bpm, double.MaxValue));
+                MessageBox.Show($"{Loc("ConfigImport_Failed")}\n{error}",
+                    Loc("Error"), MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
-
-            // Ensure a beat-0 anchor exists.
-            if (!points.Any(p => Math.Abs(p.BeatIndex) < 0.001))
-                points.Insert(0, new RawTimingPoint(Guid.NewGuid(), 0, 120, double.MaxValue));
-
-            points.Sort((a, b) => a.BeatIndex.CompareTo(b.BeatIndex));
 
             // Apply.
             if (_audioData != null)
@@ -1401,5 +1381,145 @@ public partial class MainWindow : Window
             MessageBox.Show($"{Loc("ConfigImport_Failed")}\n{ex.Message}",
                 Loc("Error"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>
+    /// Validates and parses a timing config text. Returns a localized error reason on failure,
+    /// or null on success. Rules: (1) exactly one global_offset; (2) ≥1 segment; (3) each segment has
+    /// both keys; (4) beat_index is a non-negative integer; (5) bpm is a non-negative number;
+    /// (6) beat_index strictly ascending in file order; (7) first segment beat_index = 0.
+    /// </summary>
+    private bool TryParseConfig(
+        string text, out double offset, out List<RawTimingPoint> points, out string? error)
+    {
+        offset = 0;
+        points = new List<RawTimingPoint>();
+        error = null;
+
+        bool hasOffset = false;
+        var parsed = new List<(long Beat, double Bpm)>();
+        long prevBeat = long.MinValue;
+        int segNo = 0;
+
+        var lines = text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0) continue;
+            if (line.StartsWith("#") || line.StartsWith("//")) continue;
+
+            // global_offset line
+            if (Regex.IsMatch(line, @"global_offset\s*=", RegexOptions.IgnoreCase))
+            {
+                // Rule 1: exactly one global_offset is allowed.
+                if (hasOffset)
+                {
+                    error = Loc("ConfigImport_Err_DuplicateOffset");
+                    return false;
+                }
+                // Capture the value, allowing thousand separators (e.g. 1,200).
+                var m = Regex.Match(line,
+                    @"global_offset\s*=\s*(-?[\d,]+(?:\.\d+)?)", RegexOptions.IgnoreCase);
+                if (!m.Success
+                    || !double.TryParse(m.Groups[1].Value, NumberStyles.Number,
+                        CultureInfo.InvariantCulture, out offset))
+                {
+                    error = Loc("ConfigImport_Err_NoOffset");
+                    return false;
+                }
+                // Rule 1b: offset must be finite and non-negative.
+                // (NumberStyles.Number rejects scientific notation like 1e2.)
+                if (!double.IsFinite(offset) || offset < 0)
+                {
+                    error = Loc("ConfigImport_Err_NegativeOffset");
+                    return false;
+                }
+                hasOffset = true;
+                continue;
+            }
+
+            bool hasBeat = Regex.IsMatch(line, @"beat_index\s*=", RegexOptions.IgnoreCase);
+            bool hasBpm = Regex.IsMatch(line, @"\bbpm\s*=", RegexOptions.IgnoreCase);
+
+            // A line containing either keyword is a segment candidate.
+            if (hasBeat || hasBpm)
+            {
+                segNo++;
+
+                // Rule 3: both keys must be present.
+                if (!hasBeat || !hasBpm)
+                {
+                    error = string.Format(Loc("ConfigImport_Err_MalformedSegment"), segNo);
+                    return false;
+                }
+
+                // Rule 4: beat_index must be a non-negative integer.
+                var bm = Regex.Match(line, @"beat_index\s*=\s*([^\s,]+)", RegexOptions.IgnoreCase);
+                if (!bm.Success
+                    || !long.TryParse(bm.Groups[1].Value, NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out long beat)
+                    || beat < 0)
+                {
+                    error = string.Format(Loc("ConfigImport_Err_BadBeatIndex"), segNo);
+                    return false;
+                }
+
+                // Rule 5: bpm must be a positive finite number (int or float). Reject NaN/Infinity
+                // and scientific notation (e.g. 1e2). Thousand separators are allowed (e.g. 1,200).
+                var pm = Regex.Match(line, @"\bbpm\s*=\s*([^\s,]+(?:,[^\s,]+)*)", RegexOptions.IgnoreCase);
+                if (!pm.Success
+                    || !double.TryParse(pm.Groups[1].Value, NumberStyles.Number,
+                        CultureInfo.InvariantCulture, out double bpm)
+                    || !double.IsFinite(bpm)
+                    || bpm <= 0)
+                {
+                    error = string.Format(Loc("ConfigImport_Err_BadBpm"), segNo);
+                    return false;
+                }
+
+                // Rule 6: strictly ascending.
+                if (beat <= prevBeat)
+                {
+                    error = string.Format(Loc("ConfigImport_Err_NotIncreasing"), segNo);
+                    return false;
+                }
+                prevBeat = beat;
+
+                bpm = Math.Clamp(bpm, 10, 1000);
+                parsed.Add((beat, bpm));
+            }
+            // Lines with neither keyword are ignored (comments / unknown).
+        }
+
+        // Rule 1: global_offset required (and must be exactly one — duplicates caught in the loop).
+        if (!hasOffset)
+        {
+            error = Loc("ConfigImport_Err_NoOffset");
+            return false;
+        }
+
+        // Rule 2: at least one segment.
+        if (parsed.Count == 0)
+        {
+            error = Loc("ConfigImport_Err_NoSegment");
+            return false;
+        }
+
+        // Rule 7: the first segment must be at beat_index 0 (the offset anchor).
+        if (parsed[0].Beat != 0)
+        {
+            error = Loc("ConfigImport_Err_FirstBeatNotZero");
+            return false;
+        }
+
+        // Build raw points. Imported points have no frozen cap.
+        foreach (var (beat, bpm) in parsed)
+            points.Add(new RawTimingPoint(Guid.NewGuid(), beat, bpm, double.MaxValue));
+
+        // Ensure a beat-0 anchor exists (engine forces the first point to beat 0 anyway).
+        if (!points.Any(p => Math.Abs(p.BeatIndex) < 0.001))
+            points.Insert(0, new RawTimingPoint(Guid.NewGuid(), 0, 120, double.MaxValue));
+
+        return true;
     }
 }

@@ -33,4 +33,13 @@
   <data name="Segment_Illegal" xml:space="preserve"><value>超出音频末尾</value></data>
   <data name="ConfigImport_Failed" xml:space="preserve"><value>配置文件解析失败。</value></data>
   <data name="ConfigExport_Failed" xml:space="preserve"><value>配置文件写入失败。</value></data>
+  <data name="ConfigImport_Err_NoOffset" xml:space="preserve"><value>缺少 global_offset，或其值无效</value></data>
+  <data name="ConfigImport_Err_DuplicateOffset" xml:space="preserve"><value>global_offset 只能出现 1 次</value></data>
+  <data name="ConfigImport_Err_NegativeOffset" xml:space="preserve"><value>global_offset 不能为负数</value></data>
+  <data name="ConfigImport_Err_NoSegment" xml:space="preserve"><value>至少需要 1 个 bpm 段</value></data>
+  <data name="ConfigImport_Err_MalformedSegment" xml:space="preserve"><value>第 {0} 段缺少 beat_index 或 bpm</value></data>
+  <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>第 {0} 段的 beat_index 不是非负整数</value></data>
+  <data name="ConfigImport_Err_BadBpm" xml:space="preserve"><value>第 {0} 段的 bpm 不是非负数字</value></data>
+  <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index 未从小到大排列（第 {0} 段）</value></data>
+  <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>第一个 bpm 段的 beat_index 必须是 0</value></data>
 </root>
