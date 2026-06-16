@@ -45,4 +45,19 @@
   <data name="ConfigImport_Err_BadBpm" xml:space="preserve"><value>Segment {0}: bpm is not a non-negative number</value></data>
   <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index not in ascending order (segment {0})</value></data>
   <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>The first bpm segment must have beat_index = 0</value></data>
+  <data name="OperationHelp_Btn" xml:space="preserve"><value>Help</value></data>
+  <data name="HelpDlg_Title" xml:space="preserve"><value>Operation Help</value></data>
+  <data name="HelpDlg_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Help_Op1" xml:space="preserve"><value>Drag waveform / spectrogram area</value></data>
+  <data name="Help_Desc1" xml:space="preserve"><value>Adjust audio playback position</value></data>
+  <data name="Help_Op2" xml:space="preserve"><value>Drag blank area of the middle beat ruler</value></data>
+  <data name="Help_Desc2" xml:space="preserve"><value>Adjust the global start offset (Global Offset)</value></data>
+  <data name="Help_Op3" xml:space="preserve"><value>Drag a triangle marker in the middle beat ruler</value></data>
+  <data name="Help_Desc3" xml:space="preserve"><value>Adjust the BPM of the current tempo section</value></data>
+  <data name="Help_Op4" xml:space="preserve"><value>Mouse wheel</value></data>
+  <data name="Help_Desc4" xml:space="preserve"><value>Adjust audio playback position</value></data>
+  <data name="Help_Op5" xml:space="preserve"><value>Ctrl + Mouse wheel</value></data>
+  <data name="Help_Desc5" xml:space="preserve"><value>Zoom the timeline view</value></data>
+  <data name="Help_Op6" xml:space="preserve"><value>Space key</value></data>
+  <data name="Help_Desc6" xml:space="preserve"><value>Play / Pause</value></data>
 </root>
