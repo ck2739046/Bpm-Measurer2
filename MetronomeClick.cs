@@ -2,8 +2,8 @@ using Un4seen.Bass;
 
 namespace BpmMeasurer;
 
-/// <summary>节拍器重音档位：强 / 次强 / 弱（4/4 拍的 1 / 3 / 2·4 拍）。</summary>
-public enum ClickAccent { Strong, Medium, Weak }
+/// <summary>节拍器重音档位：强 / 弱（4/4 拍的 1 / 2·3·4 拍）。</summary>
+public enum ClickAccent { Strong, Weak }
 
 /// <summary>
 /// 一个预渲染的节拍器点击音效（方波 + 指数衰减包络），已上传为 BASS sample。
@@ -28,8 +28,8 @@ public sealed class MetronomeClickAsset : IDisposable
 }
 
 /// <summary>
-/// 合成 3 档节拍器点击音效：强(1500Hz)/次强(1200Hz)/弱(1000Hz)，
-/// 方波 0.1s 指数衰减，归一化峰值分别为 0.95 / 0.80 / 0.70。
+/// 合成 2 档节拍器点击音效：强(1500Hz)/弱(1000Hz)，
+/// 方波 0.1s 指数衰减，归一化峰值分别为 0.70 / 0.48。
 /// </summary>
 public static class MetronomeClick
 {
@@ -41,12 +41,11 @@ public static class MetronomeClick
     private static readonly AccentSpec[] Specs =
     {
         new(ClickAccent.Strong, 1500.0, 0.70),
-        new(ClickAccent.Medium, 1200.0, 0.58),
         new(ClickAccent.Weak,   1000.0, 0.48),
     };
 
     /// <summary>
-    /// 生成全部 3 档点击音效。返回数组按 <see cref="ClickAccent"/> 枚举值索引。
+    /// 生成全部 2 档点击音效。返回数组按 <see cref="ClickAccent"/> 枚举值索引。
     /// 调用前需已完成 BASS_Init。失败时不抛异常（避免 async void 路径闪退），记录 Debug 并返回空数组。
     /// </summary>
     public static MetronomeClickAsset[] CreateAll(int sampleRate)

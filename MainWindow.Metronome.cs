@@ -1,10 +1,12 @@
+using System;
+using System.Windows;
 using Un4seen.Bass;
 
 namespace BpmMeasurer;
 
 /// <summary>
 /// 节拍器调度：在 <c>_bgmStream</c> 上用 BASS mixtime POS sync 实现采样级精确的点击触发，
-/// 4/4 分组（强-弱-次强-弱），每个变速段起点恒为强拍（小节计数按段重置）。
+/// 4/4 分组（强-弱-弱-弱），每个变速段起点恒为强拍（小节计数按段重置）。
 /// 前提：播放期间 timing 不变（任何 seek / 改 BPM / 改 offset 都先暂停），故无需 seek 纠错。
 /// </summary>
 public partial class MainWindow
@@ -41,7 +43,12 @@ public partial class MainWindow
         _metronomeClicks = null;
     }
 
-    // ── Accent: 4/4 grouping, reset per timing segment ──
+    // ── Accent: n/4 grouping, reset per timing segment ──
+
+    /// <summary>当前拍号分子（3, 4, 5, 6），默认 4/4。</summary>
+    private int _timeSignatureNumerator = 4;
+
+    private static readonly int[] AvailableNumerators = { 3, 4, 5, 6 };
 
     private ClickAccent GetAccentForBeat(int beatIndex)
     {
@@ -56,13 +63,31 @@ public partial class MainWindow
             }
         }
         int segStart = (int)Math.Round(point.BeatIndex);
-        int inMeasure = (((beatIndex - segStart) % 4) + 4) % 4;
+        int num = _timeSignatureNumerator;
+        int inMeasure = (((beatIndex - segStart) % num) + num) % num;
         return inMeasure switch
         {
             0 => ClickAccent.Strong,   // 段起点 / 第 1 拍
-            2 => ClickAccent.Medium,   // 第 3 拍（次强）
-            _ => ClickAccent.Weak,     // 第 2 / 4 拍
+            _ => ClickAccent.Weak,     // 其余拍
         };
+    }
+
+    private void TimeSigLeftBtn_Click(object sender, RoutedEventArgs e)
+    {
+        int idx = Array.IndexOf(AvailableNumerators, _timeSignatureNumerator);
+        if (idx <= 0) return;
+        if (_isPlaying) PausePlayback();
+        _timeSignatureNumerator = AvailableNumerators[idx - 1];
+        TimeSignatureText.Text = $"{_timeSignatureNumerator}/4";
+    }
+
+    private void TimeSigRightBtn_Click(object sender, RoutedEventArgs e)
+    {
+        int idx = Array.IndexOf(AvailableNumerators, _timeSignatureNumerator);
+        if (idx >= AvailableNumerators.Length - 1) return;
+        if (_isPlaying) PausePlayback();
+        _timeSignatureNumerator = AvailableNumerators[idx + 1];
+        TimeSignatureText.Text = $"{_timeSignatureNumerator}/4";
     }
 
     // ── Arming ──
