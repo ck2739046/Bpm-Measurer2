@@ -630,7 +630,7 @@ public partial class MainWindow : Window
         {
             var point = _timingPoints[i];
             bool isAnchor = Math.Abs(point.BeatIndex) < 0.001;
-            var accent = isAnchor ? Color.FromRgb(0x4A, 0xDE, 0x80) : Color.FromRgb(0x81, 0x8C, 0xF8);
+            var accent = Color.FromRgb(0x81, 0x8C, 0xF8);
 
             var row = new Border
             {
@@ -654,7 +654,7 @@ public partial class MainWindow : Window
             // Header label + (optional) remove button
             var header = new TextBlock
             {
-                Text = isAnchor ? Loc("Segment_Anchor") : string.Format(Loc("Segment_Label"), i),
+                Text = string.Format(Loc("Segment_Label"), i),
                 Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)),
                 FontSize = 10,
                 FontWeight = FontWeights.Bold,
@@ -692,18 +692,27 @@ public partial class MainWindow : Window
             Grid.SetColumnSpan(inputsGrid, 2);
             grid.Children.Add(inputsGrid);
 
-            var beatPanel = BuildSegmentStepper(
-                Loc("Beat_Label"),
-                new[] { 1.0 }, 1, double.PositiveInfinity, 0,
-                isAnchor ? Color.FromRgb(0x66, 0x66, 0x66) : Color.FromRgb(0xDD, 0xDD, 0xDD),
-                point.Id, isAnchor, point.BeatIndex, 0,
-                v => UpdateRawBeatIndex(point.Id, v));
-            inputsGrid.Children.Add(beatPanel);
+            FrameworkElement beatField;
+            if (isAnchor)
+            {
+                beatField = BuildSegmentStaticField(
+                    Loc("Beat_Label"), "0", Color.FromRgb(0x99, 0x99, 0x99), 0);
+            }
+            else
+            {
+                beatField = BuildSegmentStepper(
+                    Loc("Beat_Label"),
+                    new[] { 1.0 }, 1, double.PositiveInfinity, 0,
+                    Color.FromRgb(0xDD, 0xDD, 0xDD),
+                    point.Id, false, point.BeatIndex, 0,
+                    v => UpdateRawBeatIndex(point.Id, v));
+            }
+            inputsGrid.Children.Add(beatField);
 
             var bpmPanel = BuildSegmentStepper(
                 "BPM",
                 new[] { 10.0, 1.0, 0.1 }, 10, 1000, 2,
-                isAnchor ? Color.FromRgb(0x4A, 0xDE, 0x80) : Color.FromRgb(0x00, 0xF2, 0xFF),
+                Color.FromRgb(0x00, 0xF2, 0xFF),
                 point.Id, false, point.Bpm, 1,
                 v => UpdateRawBpm(point.Id, v));
             inputsGrid.Children.Add(bpmPanel);
@@ -724,6 +733,42 @@ public partial class MainWindow : Window
             row.Child = grid;
             SegmentListPanel.Children.Add(row);
         }
+    }
+
+    private StackPanel BuildSegmentStaticField(string label, string value, Color foreColor, int column)
+    {
+        var panel = new StackPanel();
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = label,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)),
+            FontSize = 9,
+            Margin = new Thickness(0, 0, 0, 2)
+        });
+
+        var box = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x0A, 0x0A)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
+            BorderThickness = new Thickness(1),
+            Height = 24,
+            Child = new TextBlock
+            {
+                Text = value,
+                Foreground = new SolidColorBrush(foreColor),
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        panel.Children.Add(box);
+
+        Grid.SetColumn(panel, column);
+        return panel;
     }
 
     private StackPanel BuildSegmentStepper(
