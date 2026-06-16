@@ -206,7 +206,7 @@ public partial class MainWindow
             inputsGrid.Children.Add(beatField);
 
             var bpmPanel = SegmentRowFactory.BuildStepper(
-                "BPM",
+                Loc("Bpm_Label"),
                 new[] { 10.0, 1.0, 0.1 }, 10, 1000, 3,
                 Color.FromRgb(0x00, 0xF2, 0xFF),
                 point.Id, false, point.Bpm, 1,

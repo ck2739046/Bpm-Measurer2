@@ -45,4 +45,19 @@
   <data name="ConfigImport_Err_BadBpm" xml:space="preserve"><value>第 {0} 段的 bpm 不是非负数字</value></data>
   <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index 未从小到大排列（第 {0} 段）</value></data>
   <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>第一个 bpm 段的 beat_index 必须是 0</value></data>
+  <data name="OperationHelp_Btn" xml:space="preserve"><value>帮助</value></data>
+  <data name="HelpDlg_Title" xml:space="preserve"><value>操作帮助</value></data>
+  <data name="HelpDlg_Close" xml:space="preserve"><value>关闭</value></data>
+  <data name="Help_Op1" xml:space="preserve"><value>鼠标拖动音频波形区 / 频谱区</value></data>
+  <data name="Help_Desc1" xml:space="preserve"><value>调整音频播放进度</value></data>
+  <data name="Help_Op2" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的空白区域</value></data>
+  <data name="Help_Desc2" xml:space="preserve"><value>调整全局起始偏移（Global Offset）</value></data>
+  <data name="Help_Op3" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的三角形标记</value></data>
+  <data name="Help_Desc3" xml:space="preserve"><value>调整当前变速段的 BPM 值</value></data>
+  <data name="Help_Op4" xml:space="preserve"><value>鼠标滚轮</value></data>
+  <data name="Help_Desc4" xml:space="preserve"><value>调整音频播放进度</value></data>
+  <data name="Help_Op5" xml:space="preserve"><value>Ctrl + 鼠标滚轮</value></data>
+  <data name="Help_Desc5" xml:space="preserve"><value>缩放时间轴视图</value></data>
+  <data name="Help_Op6" xml:space="preserve"><value>Space 键</value></data>
+  <data name="Help_Desc6" xml:space="preserve"><value>播放 / 暂停</value></data>
 </root>

@@ -319,7 +319,7 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <TextBlock x:Name="OffsetLabel" Grid.Row="0"
-                                       Text="全局起始偏移 (Offset)"
+                                       Text="{lex:Loc GlobalOffset_Label}"
                                        Foreground="#FF888888" FontSize="10" FontWeight="Bold"
                                        Margin="0,0,0,0"/>
 
@@ -344,7 +344,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="SegmentsHeader" Grid.Column="0"
-                                           Text="变速段落"
+                                           Text="{lex:Loc Segments_Title}"
                                            Foreground="#FF888888" FontSize="10" FontWeight="Bold"
                                            VerticalAlignment="Center"/>
                                 <Button x:Name="AddSegmentBtn" Grid.Column="1"
