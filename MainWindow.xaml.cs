@@ -14,6 +14,7 @@ using Microsoft.Win32;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Fx;
 using WPFLocalizeExtension.Extensions;
+using BpmMeasurer.Controls;
 
 namespace BpmMeasurer;
 
@@ -105,6 +106,17 @@ public partial class MainWindow : Window
                 if (_isPlaying) PausePlayback();
                 else StartPlayback();
             }
+        };
+
+        OffsetStepper.Configure(
+            new[] { 1.0, 0.1, 0.01 },
+            0, double.PositiveInfinity, 3,
+            Color.FromRgb(0x4A, 0xDE, 0x80), false);
+        OffsetStepper.SetValue(_globalOffset);
+        OffsetStepper.ValueChanged += (s, v) =>
+        {
+            _globalOffset = v;
+            RefreshTimingPoints();
         };
     }
 
@@ -307,6 +319,7 @@ public partial class MainWindow : Window
         // Initialize timing state
         _globalOffset = 0.1;
         _rawPoints = new List<RawTimingPoint> { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
+        OffsetStepper.SetRange(0, _audioData.Duration);
         RefreshTimingPoints();
         SidebarPanel.Visibility = Visibility.Visible;
         OverlayCanvas.Visibility = Visibility.Visible;
@@ -556,7 +569,7 @@ public partial class MainWindow : Window
     private void RefreshTimingPoints()
     {
         _timingPoints = TimingEngine.RecalculateTiming(_globalOffset, _rawPoints);
-        OffsetTextBox.Text = _globalOffset.ToString("F3");
+        OffsetStepper.SetValue(_globalOffset);
         RebuildSegmentList();
 
         if (_audioData != null && (_plotsConfigured || _specConfigured))
@@ -679,17 +692,21 @@ public partial class MainWindow : Window
             Grid.SetColumnSpan(inputsGrid, 2);
             grid.Children.Add(inputsGrid);
 
-            inputsGrid.Children.Add(BuildSegmentField(
-                Loc("Beat_Label"), ((long)Math.Round(point.BeatIndex)).ToString(),
+            var beatPanel = BuildSegmentStepper(
+                Loc("Beat_Label"),
+                new[] { 1.0 }, 1, double.PositiveInfinity, 0,
                 isAnchor ? Color.FromRgb(0x66, 0x66, 0x66) : Color.FromRgb(0xDD, 0xDD, 0xDD),
-                point.Id, isAnchor,
-                SegmentBeatTextBox_LostFocus, SegmentBeatTextBox_KeyDown, 0));
+                point.Id, isAnchor, point.BeatIndex, 0,
+                v => UpdateRawBeatIndex(point.Id, v));
+            inputsGrid.Children.Add(beatPanel);
 
-            inputsGrid.Children.Add(BuildSegmentField(
-                "BPM", point.Bpm.ToString("F2"),
+            var bpmPanel = BuildSegmentStepper(
+                "BPM",
+                new[] { 10.0, 1.0, 0.1 }, 10, 1000, 2,
                 isAnchor ? Color.FromRgb(0x4A, 0xDE, 0x80) : Color.FromRgb(0x00, 0xF2, 0xFF),
-                point.Id, false,
-                SegmentBpmTextBox_LostFocus, SegmentBpmTextBox_KeyDown, 1));
+                point.Id, false, point.Bpm, 1,
+                v => UpdateRawBpm(point.Id, v));
+            inputsGrid.Children.Add(bpmPanel);
 
             // Start time footer
             var time = new TextBlock
@@ -709,9 +726,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private StackPanel BuildSegmentField(
-        string label, string text, Color foreColor, Guid id, bool readOnly,
-        RoutedEventHandler lostFocus, KeyEventHandler keyDown, int column)
+    private StackPanel BuildSegmentStepper(
+        string label, double[] steps, double min, double max, int decimals,
+        Color foreColor, Guid id, bool readOnly, double initialValue, int column,
+        Action<double> onChanged)
     {
         var panel = new StackPanel();
         if (column == 1)
@@ -725,26 +743,13 @@ public partial class MainWindow : Window
             Margin = new Thickness(0, 0, 0, 2)
         });
 
-        var box = new TextBox
-        {
-            Text = text,
-            Tag = id,
-            IsReadOnly = readOnly,
-            TextAlignment = TextAlignment.Center,
-            Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x0A, 0x0A)),
-            Foreground = new SolidColorBrush(foreColor),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
-            BorderThickness = new Thickness(1),
-            FontFamily = new FontFamily("Consolas"),
-            FontSize = 12,
-            FontWeight = FontWeights.Bold,
-            Padding = new Thickness(2, 3, 2, 3),
-            Height = 24,
-            CaretBrush = new SolidColorBrush(foreColor)
-        };
-        box.LostFocus += lostFocus;
-        box.KeyDown += keyDown;
-        panel.Children.Add(box);
+        var stepper = new StepperInput();
+        stepper.Tag = id;
+        stepper.Configure(steps, min, max, decimals, foreColor, readOnly);
+        stepper.SetValue(initialValue);
+        if (!readOnly)
+            stepper.ValueChanged += (s, v) => onChanged(v);
+        panel.Children.Add(stepper);
 
         Grid.SetColumn(panel, column);
         return panel;
@@ -775,52 +780,6 @@ public partial class MainWindow : Window
     {
         if (sender is Button btn && btn.Tag is Guid id)
             RemoveRawPoint(id);
-    }
-
-    private void SegmentBpmTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (sender is not TextBox tb || tb.Tag is not Guid id) return;
-        if (double.TryParse(tb.Text, out double val) && val >= 10 && val <= 1000)
-        {
-            UpdateRawBpm(id, val);
-        }
-        else
-        {
-            var tp = _timingPoints.FirstOrDefault(p => p.Id == id);
-            if (tp.Id != Guid.Empty) tb.Text = tp.Bpm.ToString("F2");
-        }
-    }
-
-    private void SegmentBpmTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            SegmentBpmTextBox_LostFocus(sender, e);
-            Keyboard.ClearFocus();
-        }
-    }
-
-    private void SegmentBeatTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (sender is not TextBox tb || tb.Tag is not Guid id) return;
-        if (double.TryParse(tb.Text, out double val) && val >= 1)
-        {
-            UpdateRawBeatIndex(id, val);
-        }
-        else
-        {
-            var tp = _timingPoints.FirstOrDefault(p => p.Id == id);
-            if (tp.Id != Guid.Empty) tb.Text = ((long)Math.Round(tp.BeatIndex)).ToString();
-        }
-    }
-
-    private void SegmentBeatTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            SegmentBeatTextBox_LostFocus(sender, e);
-            Keyboard.ClearFocus();
-        }
     }
 
     // ── Beat density helpers (10 levels, based on pixels per beat) ──
@@ -1246,45 +1205,6 @@ public partial class MainWindow : Window
         TimeText.Text = $"{_viewCenterTime:F3}s";
         SeekBassTo(_viewCenterTime);
         RenderVisuals();
-    }
-
-    // ── Sidebar stepper button handlers ──
-
-    private void OffsetStepMinus1_Click(object sender, RoutedEventArgs e) => StepOffset(-1.0);
-    private void OffsetStepMinus01_Click(object sender, RoutedEventArgs e) => StepOffset(-0.1);
-    private void OffsetStepMinus001_Click(object sender, RoutedEventArgs e) => StepOffset(-0.01);
-    private void OffsetStepPlus001_Click(object sender, RoutedEventArgs e) => StepOffset(0.01);
-    private void OffsetStepPlus01_Click(object sender, RoutedEventArgs e) => StepOffset(0.1);
-    private void OffsetStepPlus1_Click(object sender, RoutedEventArgs e) => StepOffset(1.0);
-
-    private void StepOffset(double delta)
-    {
-        _globalOffset = Math.Max(0, Math.Round((_globalOffset + delta) * 1000.0) / 1000.0);
-        RefreshTimingPoints();
-    }
-
-    // ── Sidebar text box handlers ──
-
-    private void OffsetTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (double.TryParse(OffsetTextBox.Text, out double val) && val >= 0)
-        {
-            _globalOffset = Math.Round(val * 1000.0) / 1000.0;
-            RefreshTimingPoints();
-        }
-        else
-        {
-            OffsetTextBox.Text = _globalOffset.ToString("F3");
-        }
-    }
-
-    private void OffsetTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            OffsetTextBox_LostFocus(sender, e);
-            Keyboard.ClearFocus();
-        }
     }
 
     // ── Import / Export config buttons ──
