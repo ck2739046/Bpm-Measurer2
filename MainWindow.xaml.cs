@@ -118,7 +118,6 @@ public partial class MainWindow : Window
         FileNameText.Text = Loc("NoAudio");
         ImportConfigText.Text = Loc("ImportConfig_Btn");
         ExportConfigText.Text = Loc("ExportConfig_Btn");
-        OffsetLabel.Text = Loc("GlobalOffset_Label");
         SegmentsHeader.Text = Loc("Segments_Title");
         AddSegmentText.Text = Loc("AddSegment_Btn");
     }
@@ -850,8 +849,11 @@ public partial class MainWindow : Window
         double leftTime = _viewCenterTime - _viewHalfWidth;
         double rightTime = _viewCenterTime + _viewHalfWidth;
 
-        foreach (var point in _timingPoints)
+        for (int i = 0; i < _timingPoints.Count; i++)
         {
+            var point = _timingPoints[i];
+            var nextPoint = (i + 1 < _timingPoints.Count) ? _timingPoints[i + 1] : (TimingPoint?)null;
+
             double interval = 60.0 / point.Bpm;
             double pxPerBeat = canvasW / dataSpan * interval;
             int vertInterval = GetVertInterval(pxPerBeat);
@@ -866,6 +868,9 @@ public partial class MainWindow : Window
 
             while (true)
             {
+                // Stop at the next segment's start beat — old segment owns no beats past it.
+                if (nextPoint.HasValue && point.BeatIndex + relBeat >= nextPoint.Value.BeatIndex) break;
+
                 double beatTime = point.Time + relBeat * interval;
                 if (beatTime > rightTime) break;
                 if (relBeat > 0 && beatTime > _audioData.Duration) break;
@@ -941,8 +946,11 @@ public partial class MainWindow : Window
         double leftTime = _viewCenterTime - _viewHalfWidth;
         double rightTime = _viewCenterTime + _viewHalfWidth;
 
-        foreach (var point in _timingPoints)
+        for (int i = 0; i < _timingPoints.Count; i++)
         {
+            var point = _timingPoints[i];
+            var nextPoint = (i + 1 < _timingPoints.Count) ? _timingPoints[i + 1] : (TimingPoint?)null;
+
             double interval = 60.0 / point.Bpm;
             double pxPerBeat = canvasW / dataSpan * interval;
             int showInterval = GetShowInterval(pxPerBeat);
@@ -952,6 +960,9 @@ public partial class MainWindow : Window
             int relBeat = startRelBeat;
             while (true)
             {
+                // Stop at the next segment's start beat — old segment owns no beats past it.
+                if (nextPoint.HasValue && point.BeatIndex + relBeat >= nextPoint.Value.BeatIndex) break;
+
                 double beatTime = point.Time + relBeat * interval;
                 if (beatTime > rightTime) break;
 
