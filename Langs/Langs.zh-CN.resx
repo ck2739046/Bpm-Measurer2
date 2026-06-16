@@ -25,4 +25,10 @@
   <data name="Bpm_Label" xml:space="preserve"><value>BPM</value></data>
   <data name="ImportConfig_Btn" xml:space="preserve"><value>导入配置</value></data>
   <data name="ExportConfig_Btn" xml:space="preserve"><value>导出配置</value></data>
+  <data name="Segments_Title" xml:space="preserve"><value>变速段落</value></data>
+  <data name="AddSegment_Btn" xml:space="preserve"><value>+ 添加</value></data>
+  <data name="Segment_Anchor" xml:space="preserve"><value>起点锚点 (Offset)</value></data>
+  <data name="Segment_Label" xml:space="preserve"><value>段落 {0}</value></data>
+  <data name="Beat_Label" xml:space="preserve"><value>拍索引 (Beat)</value></data>
+  <data name="StartTime_Label" xml:space="preserve"><value>起始时间:</value></data>
 </root>

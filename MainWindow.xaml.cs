@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -49,7 +50,7 @@ public partial class MainWindow : Window
 
     // Timing state
     private double _globalOffset = 0.1;
-    private RawTimingPoint _singlePoint = new RawTimingPoint(Guid.NewGuid(), 0, 120);
+    private List<RawTimingPoint> _rawPoints = new() { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
     private IReadOnlyList<TimingPoint> _timingPoints = Array.Empty<TimingPoint>();
 
     // Overlay canvas elements (dynamically managed)
@@ -62,8 +63,8 @@ public partial class MainWindow : Window
     private double _dragStartX;
     private double _dragStartTime;
     private double _dragStartOffset;
-    private double _dragStartBpm;
     private double _dragBeatTarget;
+    private double _dragTargetSegBeat;
     private SolidColorBrush? _dragDisplayColor;
 
     public static string Loc(string key)
@@ -118,7 +119,8 @@ public partial class MainWindow : Window
         ImportConfigText.Text = Loc("ImportConfig_Btn");
         ExportConfigText.Text = Loc("ExportConfig_Btn");
         OffsetLabel.Text = Loc("GlobalOffset_Label");
-        BpmLabel.Text = Loc("Bpm_Label");
+        SegmentsHeader.Text = Loc("Segments_Title");
+        AddSegmentText.Text = Loc("AddSegment_Btn");
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -305,10 +307,8 @@ public partial class MainWindow : Window
 
         // Initialize timing state
         _globalOffset = 0.1;
-        _singlePoint = new RawTimingPoint(Guid.NewGuid(), 0, 120);
+        _rawPoints = new List<RawTimingPoint> { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
         RefreshTimingPoints();
-        OffsetTextBox.Text = _globalOffset.ToString("F3");
-        BpmTextBox.Text = _singlePoint.Bpm.ToString("F2");
         SidebarPanel.Visibility = Visibility.Visible;
         OverlayCanvas.Visibility = Visibility.Visible;
         BeatRowCanvas.Visibility = Visibility.Visible;
@@ -556,14 +556,271 @@ public partial class MainWindow : Window
 
     private void RefreshTimingPoints()
     {
-        _timingPoints = TimingEngine.RecalculateTiming(_globalOffset, new[] { _singlePoint });
+        _timingPoints = TimingEngine.RecalculateTiming(_globalOffset, _rawPoints);
         OffsetTextBox.Text = _globalOffset.ToString("F3");
-        BpmTextBox.Text = _singlePoint.Bpm.ToString("F2");
+        RebuildSegmentList();
 
         if (_audioData != null && (_plotsConfigured || _specConfigured))
         {
             RenderBeatGrid();
             RenderBeatRow();
+        }
+    }
+
+    // ── Raw points editing helpers ──
+
+    private void UpdateRawBpm(Guid id, double bpm)
+    {
+        bpm = Math.Clamp(Math.Round(bpm * 100.0) / 100.0, 10, 1000);
+        for (int i = 0; i < _rawPoints.Count; i++)
+        {
+            if (_rawPoints[i].Id == id)
+            {
+                _rawPoints[i] = new RawTimingPoint(id, _rawPoints[i].BeatIndex, bpm);
+                break;
+            }
+        }
+        RefreshTimingPoints();
+    }
+
+    private void UpdateRawBeatIndex(Guid id, double beatIndex)
+    {
+        beatIndex = Math.Max(1, Math.Round(beatIndex));
+        if (_rawPoints.Any(p => p.Id != id && Math.Abs(p.BeatIndex - beatIndex) < 0.001))
+            return; // duplicate beat index — reject silently
+        for (int i = 0; i < _rawPoints.Count; i++)
+        {
+            if (_rawPoints[i].Id == id)
+            {
+                _rawPoints[i] = new RawTimingPoint(id, beatIndex, _rawPoints[i].Bpm);
+                break;
+            }
+        }
+        _rawPoints.Sort((a, b) => a.BeatIndex.CompareTo(b.BeatIndex));
+        RefreshTimingPoints();
+    }
+
+    private void RemoveRawPoint(Guid id)
+    {
+        var target = _rawPoints.FirstOrDefault(p => p.Id == id);
+        if (target.BeatIndex == 0) return; // anchor (beat 0) is never removable
+        _rawPoints.RemoveAll(p => p.Id == id);
+        RefreshTimingPoints();
+    }
+
+    // ── Segment list panel (sidebar) ──
+
+    private void RebuildSegmentList()
+    {
+        SegmentListPanel.Children.Clear();
+
+        for (int i = 0; i < _timingPoints.Count; i++)
+        {
+            var point = _timingPoints[i];
+            bool isAnchor = Math.Abs(point.BeatIndex) < 0.001;
+            var accent = isAnchor ? Color.FromRgb(0x4A, 0xDE, 0x80) : Color.FromRgb(0x81, 0x8C, 0xF8);
+
+            var row = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)),
+                BorderBrush = new SolidColorBrush(accent),
+                BorderThickness = new Thickness(3, 0, 0, 0),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // Header label + (optional) remove button
+            var header = new TextBlock
+            {
+                Text = isAnchor ? Loc("Segment_Anchor") : string.Format(Loc("Segment_Label"), i),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)),
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetRow(header, 0);
+            Grid.SetColumn(header, 0);
+            grid.Children.Add(header);
+
+            if (!isAnchor)
+            {
+                var removeBtn = new Button
+                {
+                    Content = "✕",
+                    Tag = point.Id,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)),
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Cursor = Cursors.Hand,
+                    FontSize = 11,
+                    Padding = new Thickness(4, 0, 4, 0),
+                    Height = 20
+                };
+                removeBtn.Click += RemoveSegmentBtn_Click;
+                Grid.SetRow(removeBtn, 0);
+                Grid.SetColumn(removeBtn, 1);
+                grid.Children.Add(removeBtn);
+            }
+
+            // Beat + BPM inputs
+            var inputsGrid = new Grid();
+            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetRow(inputsGrid, 2);
+            Grid.SetColumnSpan(inputsGrid, 2);
+            grid.Children.Add(inputsGrid);
+
+            inputsGrid.Children.Add(BuildSegmentField(
+                Loc("Beat_Label"), ((long)Math.Round(point.BeatIndex)).ToString(),
+                isAnchor ? Color.FromRgb(0x66, 0x66, 0x66) : Color.FromRgb(0xDD, 0xDD, 0xDD),
+                point.Id, isAnchor,
+                SegmentBeatTextBox_LostFocus, SegmentBeatTextBox_KeyDown, 0));
+
+            inputsGrid.Children.Add(BuildSegmentField(
+                "BPM", point.Bpm.ToString("F2"),
+                isAnchor ? Color.FromRgb(0x4A, 0xDE, 0x80) : Color.FromRgb(0x00, 0xF2, 0xFF),
+                point.Id, false,
+                SegmentBpmTextBox_LostFocus, SegmentBpmTextBox_KeyDown, 1));
+
+            // Start time footer
+            var time = new TextBlock
+            {
+                Text = $"{Loc("StartTime_Label")}  {point.Time:F3}s",
+                Foreground = new SolidColorBrush(Color.FromRgb(0x81, 0x8C, 0xF8)),
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 11,
+                FontWeight = FontWeights.Bold
+            };
+            Grid.SetRow(time, 4);
+            Grid.SetColumnSpan(time, 2);
+            grid.Children.Add(time);
+
+            row.Child = grid;
+            SegmentListPanel.Children.Add(row);
+        }
+    }
+
+    private StackPanel BuildSegmentField(
+        string label, string text, Color foreColor, Guid id, bool readOnly,
+        RoutedEventHandler lostFocus, KeyEventHandler keyDown, int column)
+    {
+        var panel = new StackPanel();
+        if (column == 1)
+            panel.Margin = new Thickness(6, 0, 0, 0);
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = label,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)),
+            FontSize = 9,
+            Margin = new Thickness(0, 0, 0, 2)
+        });
+
+        var box = new TextBox
+        {
+            Text = text,
+            Tag = id,
+            IsReadOnly = readOnly,
+            TextAlignment = TextAlignment.Center,
+            Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x0A, 0x0A)),
+            Foreground = new SolidColorBrush(foreColor),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
+            BorderThickness = new Thickness(1),
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 12,
+            FontWeight = FontWeights.Bold,
+            Padding = new Thickness(2, 3, 2, 3),
+            Height = 24,
+            CaretBrush = new SolidColorBrush(foreColor)
+        };
+        box.LostFocus += lostFocus;
+        box.KeyDown += keyDown;
+        panel.Children.Add(box);
+
+        Grid.SetColumn(panel, column);
+        return panel;
+    }
+
+    private void AddSegmentBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_audioData == null || _timingPoints.Count == 0) return;
+
+        // Snap to the nearest beat at the playhead position.
+        double t = Math.Clamp(_viewCenterTime, 0, _audioData.Duration);
+        double beatF = TimingEngine.GetBeatIndexAtTime(t, _timingPoints);
+        long newBeat = Math.Max(1, (long)Math.Round(beatF));
+
+        // Rule: only append after the last existing beat index.
+        long maxBeat = (long)Math.Floor(_rawPoints.Max(p => p.BeatIndex));
+        if (newBeat <= maxBeat)
+            newBeat = maxBeat + 1;
+
+        // Default BPM inherits from the last (previous) segment.
+        double prevBpm = _rawPoints[^1].Bpm;
+        _rawPoints.Add(new RawTimingPoint(Guid.NewGuid(), newBeat, prevBpm));
+        _rawPoints.Sort((a, b) => a.BeatIndex.CompareTo(b.BeatIndex));
+        RefreshTimingPoints();
+    }
+
+    private void RemoveSegmentBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is Guid id)
+            RemoveRawPoint(id);
+    }
+
+    private void SegmentBpmTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox tb || tb.Tag is not Guid id) return;
+        if (double.TryParse(tb.Text, out double val) && val >= 10 && val <= 1000)
+        {
+            UpdateRawBpm(id, val);
+        }
+        else
+        {
+            var tp = _timingPoints.FirstOrDefault(p => p.Id == id);
+            if (tp.Id != Guid.Empty) tb.Text = tp.Bpm.ToString("F2");
+        }
+    }
+
+    private void SegmentBpmTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            SegmentBpmTextBox_LostFocus(sender, e);
+            Keyboard.ClearFocus();
+        }
+    }
+
+    private void SegmentBeatTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox tb || tb.Tag is not Guid id) return;
+        if (double.TryParse(tb.Text, out double val) && val >= 1)
+        {
+            UpdateRawBeatIndex(id, val);
+        }
+        else
+        {
+            var tp = _timingPoints.FirstOrDefault(p => p.Id == id);
+            if (tp.Id != Guid.Empty) tb.Text = ((long)Math.Round(tp.BeatIndex)).ToString();
+        }
+    }
+
+    private void SegmentBeatTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            SegmentBeatTextBox_LostFocus(sender, e);
+            Keyboard.ClearFocus();
         }
     }
 
@@ -589,8 +846,6 @@ public partial class MainWindow : Window
         if (canvasW <= 0 || canvasH <= 0) return;
 
         double dataSpan = _viewHalfWidth * 2.0;
-        double pxPerBeat = canvasW / dataSpan * (60.0 / _singlePoint.Bpm);
-        int vertInterval = GetVertInterval(pxPerBeat);
 
         double leftTime = _viewCenterTime - _viewHalfWidth;
         double rightTime = _viewCenterTime + _viewHalfWidth;
@@ -598,6 +853,8 @@ public partial class MainWindow : Window
         foreach (var point in _timingPoints)
         {
             double interval = 60.0 / point.Bpm;
+            double pxPerBeat = canvasW / dataSpan * interval;
+            int vertInterval = GetVertInterval(pxPerBeat);
             // Find the first beat visible
             double startTimeOffset = Math.Max(0, leftTime - point.Time);
             int startRelBeat = Math.Max(0, (int)Math.Ceiling(startTimeOffset / interval));
@@ -680,8 +937,6 @@ public partial class MainWindow : Window
         if (canvasW <= 0) return;
 
         double dataSpan = _viewHalfWidth * 2.0;
-        double pxPerBeat = canvasW / dataSpan * (60.0 / _singlePoint.Bpm);
-        int showInterval = GetShowInterval(pxPerBeat);
 
         double leftTime = _viewCenterTime - _viewHalfWidth;
         double rightTime = _viewCenterTime + _viewHalfWidth;
@@ -689,6 +944,8 @@ public partial class MainWindow : Window
         foreach (var point in _timingPoints)
         {
             double interval = 60.0 / point.Bpm;
+            double pxPerBeat = canvasW / dataSpan * interval;
+            int showInterval = GetShowInterval(pxPerBeat);
             double startTimeOffset = Math.Max(0, leftTime - point.Time);
             int startRelBeat = Math.Max(0, (int)Math.Ceiling(startTimeOffset / interval));
 
@@ -784,31 +1041,54 @@ public partial class MainWindow : Window
 
         if (y >= beatRowTop && y <= beatRowBottom)
         {
-            // Check if clicking near a visible triangle (based on current density, within 15px)
+            // Clicking near a visible triangle (within 15px) starts a drag.
             double nearestBeatIdx = TimingEngine.GetBeatIndexAtTime(mouseTime, _timingPoints);
             long globalIdx = (long)Math.Round(nearestBeatIdx);
             double beatTimeAtIdx = TimingEngine.GetTimeAtBeatIndex(globalIdx, _timingPoints);
             double pixelDist = Math.Abs(TimeToCanvasX(beatTimeAtIdx) - x);
 
+            // Density based on the segment under the mouse (multi-BPM aware).
+            var (segAtMouse, _) = TimingEngine.GetPointAtTime(mouseTime, _timingPoints);
             double dataSpan = _viewHalfWidth * 2.0;
             double canvasW = OverlayCanvas.ActualWidth;
-            double pxPerBeat = canvasW / dataSpan * (60.0 / _singlePoint.Bpm);
+            double pxPerBeat = canvasW / dataSpan * (60.0 / segAtMouse.Bpm);
             int showInterval = GetShowInterval(pxPerBeat);
-            bool onTriangle = (globalIdx > 0) && (globalIdx % showInterval == 0) && pixelDist < 15;
+            bool onTriangle = (globalIdx >= 0) && (globalIdx % showInterval == 0) && pixelDist < 15;
 
-            if (onTriangle && globalIdx > 0)
+            if (onTriangle && globalIdx == 0)
             {
-                // BPM drag: drag the triangle to stretch BPM
+                // Drag the start anchor → adjust global offset
+                _dragMode = DragMode.Offset;
+                _dragStartX = x;
+                _dragStartTime = mouseTime;
+                _dragStartOffset = _globalOffset;
+                _dragDisplayColor = new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80));
+            }
+            else if (onTriangle)
+            {
+                // Decide which segment's BPM this beat controls.
+                // A section-start beat (== some non-first segment's BeatIndex) is owned by the PREVIOUS segment,
+                // because its time is determined by the previous segment's BPM. Interior beats belong to their own segment.
+                double targetSegBeat = segAtMouse.BeatIndex;
+                for (int i = 1; i < _timingPoints.Count; i++)
+                {
+                    if (Math.Abs(_timingPoints[i].BeatIndex - globalIdx) < 0.001)
+                    {
+                        targetSegBeat = _timingPoints[i - 1].BeatIndex;
+                        break;
+                    }
+                }
+
                 _dragMode = DragMode.Bpm;
                 _dragStartX = x;
                 _dragStartTime = mouseTime;
-                _dragStartBpm = _singlePoint.Bpm;
                 _dragBeatTarget = globalIdx;
+                _dragTargetSegBeat = targetSegBeat;
                 _dragDisplayColor = new SolidColorBrush(Color.FromRgb(0x00, 0xF2, 0xFF));
             }
             else
             {
-                // Offset drag: pan global offset anywhere in BeatRow not on triangle
+                // Not on a triangle → pan global offset anywhere in the BeatRow
                 _dragMode = DragMode.Offset;
                 _dragStartX = x;
                 _dragStartTime = mouseTime;
@@ -849,16 +1129,26 @@ public partial class MainWindow : Window
             }
             case DragMode.Bpm:
             {
-                double newTargetTime = mouseTime;
-
-                if (_dragBeatTarget > 0 && newTargetTime > _globalOffset + 0.01)
+                // Locate the target segment (whose BPM we edit) by its start beat index.
+                // Its own Time is independent of its own BPM, so it stays fixed during the drag.
+                int segIdx = -1;
+                for (int i = 0; i < _timingPoints.Count; i++)
                 {
-                    double rawBpm = (_dragBeatTarget * 60.0) / (newTargetTime - _globalOffset);
-                    double roundedBpm = Math.Round(rawBpm * 100.0) / 100.0;
-                    roundedBpm = Math.Clamp(roundedBpm, 10, 1000);
+                    if (Math.Abs(_timingPoints[i].BeatIndex - _dragTargetSegBeat) < 0.001)
+                    {
+                        segIdx = i;
+                        break;
+                    }
+                }
+                if (segIdx < 0) break;
+                var seg = _timingPoints[segIdx];
 
-                    _singlePoint = new RawTimingPoint(_singlePoint.Id, _singlePoint.BeatIndex, roundedBpm);
-                    RefreshTimingPoints();
+                double beatsFromStart = _dragBeatTarget - seg.BeatIndex;
+                double timeDiff = mouseTime - seg.Time;
+                if (beatsFromStart > 0 && timeDiff > 0.001)
+                {
+                    double rawBpm = (beatsFromStart * 60.0) / timeDiff;
+                    UpdateRawBpm(seg.Id, rawBpm);
                 }
                 break;
             }
@@ -962,21 +1252,6 @@ public partial class MainWindow : Window
         RefreshTimingPoints();
     }
 
-    private void BpmStepMinus1_Click(object sender, RoutedEventArgs e) => StepBpm(-1.0);
-    private void BpmStepMinus01_Click(object sender, RoutedEventArgs e) => StepBpm(-0.1);
-    private void BpmStepMinus001_Click(object sender, RoutedEventArgs e) => StepBpm(-0.01);
-    private void BpmStepPlus001_Click(object sender, RoutedEventArgs e) => StepBpm(0.01);
-    private void BpmStepPlus01_Click(object sender, RoutedEventArgs e) => StepBpm(0.1);
-    private void BpmStepPlus1_Click(object sender, RoutedEventArgs e) => StepBpm(1.0);
-
-    private void StepBpm(double delta)
-    {
-        double newBpm = Math.Round((_singlePoint.Bpm + delta) * 100.0) / 100.0;
-        newBpm = Math.Clamp(newBpm, 10, 1000);
-        _singlePoint = new RawTimingPoint(_singlePoint.Id, _singlePoint.BeatIndex, newBpm);
-        RefreshTimingPoints();
-    }
-
     // ── Sidebar text box handlers ──
 
     private void OffsetTextBox_LostFocus(object sender, RoutedEventArgs e)
@@ -997,29 +1272,6 @@ public partial class MainWindow : Window
         if (e.Key == Key.Enter)
         {
             OffsetTextBox_LostFocus(sender, e);
-            Keyboard.ClearFocus();
-        }
-    }
-
-    private void BpmTextBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (double.TryParse(BpmTextBox.Text, out double val) && val >= 10 && val <= 1000)
-        {
-            _singlePoint = new RawTimingPoint(_singlePoint.Id, _singlePoint.BeatIndex,
-                Math.Round(val * 100.0) / 100.0);
-            RefreshTimingPoints();
-        }
-        else
-        {
-            BpmTextBox.Text = _singlePoint.Bpm.ToString("F2");
-        }
-    }
-
-    private void BpmTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            BpmTextBox_LostFocus(sender, e);
             Keyboard.ClearFocus();
         }
     }

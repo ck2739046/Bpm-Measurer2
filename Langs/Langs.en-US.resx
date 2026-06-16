@@ -25,4 +25,10 @@
   <data name="Bpm_Label" xml:space="preserve"><value>BPM</value></data>
   <data name="ImportConfig_Btn" xml:space="preserve"><value>Import Config</value></data>
   <data name="ExportConfig_Btn" xml:space="preserve"><value>Export Config</value></data>
+  <data name="Segments_Title" xml:space="preserve"><value>Segments</value></data>
+  <data name="AddSegment_Btn" xml:space="preserve"><value>+ Add</value></data>
+  <data name="Segment_Anchor" xml:space="preserve"><value>Start Anchor (Offset)</value></data>
+  <data name="Segment_Label" xml:space="preserve"><value>Segment {0}</value></data>
+  <data name="Beat_Label" xml:space="preserve"><value>Beat</value></data>
+  <data name="StartTime_Label" xml:space="preserve"><value>Start:</value></data>
 </root>
