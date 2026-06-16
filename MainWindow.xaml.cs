@@ -176,9 +176,14 @@ public partial class MainWindow : Window
         SampleRateText.Text = "-";
         DurationText.Text = "-";
 
+        LoadTimingLogger.Begin(filePath);
+
         var audioData = await Task.Run(() => BpmAudioLoader.Load(filePath));
+        LoadTimingLogger.Phase("Audio decode");
+
         if (audioData == null)
         {
+            LoadTimingLogger.End("Decode failed");
             _isLoading = false;
             OpenBtn.IsEnabled = true;
             PlaceholderText.Visibility = Visibility.Visible;
@@ -192,6 +197,7 @@ public partial class MainWindow : Window
         _decodeStream = Bass.BASS_StreamCreateFile(filePath, 0L, 0L, BASSFlag.BASS_STREAM_DECODE);
         if (_decodeStream == 0)
         {
+            LoadTimingLogger.End("BASS decode stream failed");
             _audioData = null;
             _isLoading = false;
             OpenBtn.IsEnabled = true;
@@ -204,6 +210,7 @@ public partial class MainWindow : Window
         _bgmStream = BassFx.BASS_FX_TempoCreate(_decodeStream, BASSFlag.BASS_FX_FREESOURCE);
         if (_bgmStream == 0)
         {
+            LoadTimingLogger.End("BASS tempo stream failed");
             Bass.BASS_StreamFree(_decodeStream);
             _decodeStream = 0;
             _audioData = null;
@@ -215,6 +222,7 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
+        LoadTimingLogger.Phase("BASS stream create");
 
         // Show loading indicator
         PlaceholderText.Visibility = Visibility.Collapsed;
@@ -226,6 +234,7 @@ public partial class MainWindow : Window
             _waveEnvelope = PrecomputedAudioData.ComputeWaveform(
                 _audioData.RawSamples, _audioData.Duration);
         });
+        LoadTimingLogger.Phase("Waveform precompute");
         _audioData.RawSamples = null!; // Free ~50MB+ for long audio, no longer needed
 
         LoadingText.Text = Loc("ComputingSpectrogram");
@@ -234,6 +243,7 @@ public partial class MainWindow : Window
             _specCache = PrecomputedAudioData.ComputeSpectrogram(
                 _audioData.FilePath, _audioData.Duration);
         });
+        LoadTimingLogger.Phase("Spectrogram precompute");
 
         LoadingText.Visibility = Visibility.Collapsed;
 
@@ -261,6 +271,9 @@ public partial class MainWindow : Window
         OpenBtn.IsEnabled = true;
 
         RenderVisuals();
+        LoadTimingLogger.Phase("Render visuals");
+
+        LoadTimingLogger.End($"Duration={_audioData.Duration:F2}s  SR={_audioData.SampleRate}Hz  Ch={_audioData.Channels}");
     }
 
     private void StartPlayback()
