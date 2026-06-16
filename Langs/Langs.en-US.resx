@@ -31,4 +31,6 @@
   <data name="Beat_Label" xml:space="preserve"><value>Beat</value></data>
   <data name="StartTime_Label" xml:space="preserve"><value>Start:</value></data>
   <data name="Segment_Illegal" xml:space="preserve"><value>beyond audio end</value></data>
+  <data name="ConfigImport_Failed" xml:space="preserve"><value>Failed to parse config file.</value></data>
+  <data name="ConfigExport_Failed" xml:space="preserve"><value>Failed to write config file.</value></data>
 </root>

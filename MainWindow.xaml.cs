@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -1310,15 +1312,94 @@ public partial class MainWindow : Window
         RenderVisuals();
     }
 
-    // ── Import / Export config buttons ──
-
-    private void ImportConfigBtn_Click(object sender, RoutedEventArgs e)
-    {
-        // Placeholder for future implementation
-    }
+    // ── Import / Export config (plain-text format) ──
+    // Line 1: global_offset = <seconds>
+    // Line 2+: beat_index = <int>, bpm = <float>
 
     private void ExportConfigBtn_Click(object sender, RoutedEventArgs e)
     {
-        // Placeholder for future implementation
+        if (_audioData == null) return;
+
+        var dlg = new SaveFileDialog
+        {
+            Filter = "Timing config (*.txt)|*.txt",
+            FileName = "timing_config.txt"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var lines = new List<string> { $"global_offset = {_globalOffset:F3}" };
+            double duration = _audioData?.Duration ?? double.MaxValue;
+            foreach (var p in _timingPoints)
+            {
+                bool isAnchor = Math.Abs(p.BeatIndex) < 0.001;
+                // Skip illegal segments (start time past audio end) on export.
+                if (!isAnchor && p.Time > duration) continue;
+                lines.Add($"beat_index = {(long)Math.Round(p.BeatIndex)}, bpm = {p.Bpm:F3}");
+            }
+            File.WriteAllText(dlg.FileName, string.Join(Environment.NewLine, lines));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"{Loc("ConfigExport_Failed")}\n{ex.Message}",
+                Loc("Error"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ImportConfigBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = "Timing config (*.txt)|*.txt|All files (*.*)|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var text = File.ReadAllText(dlg.FileName);
+
+            // global_offset = xxx
+            var offsetMatch = Regex.Match(text,
+                @"global_offset\s*=\s*(-?\d+(?:\.\d+)?)", RegexOptions.IgnoreCase);
+            if (!offsetMatch.Success) throw new FormatException("missing global_offset");
+            double offset = double.Parse(offsetMatch.Groups[1].Value, CultureInfo.InvariantCulture);
+
+            // beat_index = xxx, bpm = xxx
+            var segMatches = Regex.Matches(text,
+                @"beat_index\s*=\s*(-?\d+)\s*,\s*bpm\s*=\s*(\d+(?:\.\d+)?)",
+                RegexOptions.IgnoreCase);
+
+            var points = new List<RawTimingPoint>();
+            foreach (Match m in segMatches)
+            {
+                long beat = long.Parse(m.Groups[1].Value);
+                double bpm = double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+                bpm = Math.Clamp(bpm, 10, 1000);
+                // Imported points have no frozen cap (editable up to the dynamic limit on edit).
+                points.Add(new RawTimingPoint(Guid.NewGuid(), Math.Max(0, beat), bpm, double.MaxValue));
+            }
+
+            // Ensure a beat-0 anchor exists.
+            if (!points.Any(p => Math.Abs(p.BeatIndex) < 0.001))
+                points.Insert(0, new RawTimingPoint(Guid.NewGuid(), 0, 120, double.MaxValue));
+
+            points.Sort((a, b) => a.BeatIndex.CompareTo(b.BeatIndex));
+
+            // Apply.
+            if (_audioData != null)
+            {
+                OffsetStepper.SetRange(0, _audioData.Duration);
+                offset = Math.Clamp(offset, 0, _audioData.Duration);
+            }
+            _globalOffset = Math.Round(offset * 1000.0) / 1000.0;
+            _rawPoints = points;
+            RefreshTimingPoints();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"{Loc("ConfigImport_Failed")}\n{ex.Message}",
+                Loc("Error"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 }
