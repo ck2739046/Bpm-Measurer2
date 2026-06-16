@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using ScottPlot;
 
 namespace BpmMeasurer;
 
@@ -71,7 +70,7 @@ public static class SpectrogramBitmapRenderer
     /// followed by a sequential global merge (O(threads), negligible).
     /// Replaces the original single-threaded O(h·w) scan.
     /// </summary>
-    internal static ScottPlot.Range ComputeRangeParallel(float[,] mags)
+    internal static Range ComputeRangeParallel(float[,] mags)
     {
         int h = mags.GetLength(0);
         int w = mags.GetLength(1);
@@ -106,6 +105,6 @@ public static class SpectrogramBitmapRenderer
             if (localRange[i].Min < globalMin) globalMin = localRange[i].Min;
             if (localRange[i].Max > globalMax) globalMax = localRange[i].Max;
         }
-        return new ScottPlot.Range(globalMin, globalMax);
+        return new Range(globalMin, globalMax);
     }
 }

@@ -1,5 +1,3 @@
-using ScottPlot;
-
 namespace BpmMeasurer;
 
 /// <summary>
@@ -26,10 +24,10 @@ public class WaveSpectrogramColormap : IColormap
         return lut;
     }
 
-    public Color GetColor(double fraction)
+    public ArgbColor GetColor(double fraction)
     {
         if (!double.IsFinite(fraction))
-            return Color.FromHex("#000000");
+            return ArgbColor.FromHex("#000000");
 
         double t;
         int r, g, b;
@@ -77,6 +75,6 @@ public class WaveSpectrogramColormap : IColormap
             r = 255 - (int)(t * 75); g = (int)(20 * (1 - t)); b = (int)(t * 180);
         }
 
-        return new Color((byte)r, (byte)g, (byte)b);
+        return new ArgbColor((byte)r, (byte)g, (byte)b);
     }
 }
