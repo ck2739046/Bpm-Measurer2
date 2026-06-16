@@ -40,7 +40,7 @@ public partial class MainWindow : Window
     private WriteableBitmap? _waveBitmap;
 
     // Timing state
-    private double _globalOffset = 0.1;
+    private double _globalOffset = 0.0;
     private List<RawTimingPoint> _rawPoints = new() { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
     private IReadOnlyList<TimingPoint> _timingPoints = Array.Empty<TimingPoint>();
 
@@ -96,6 +96,7 @@ public partial class MainWindow : Window
         OffsetStepper.SetValue(_globalOffset);
         OffsetStepper.ValueChanged += (s, v) =>
         {
+            if (_isPlaying) PausePlayback();
             _globalOffset = v;
             RefreshTimingPoints();
         };

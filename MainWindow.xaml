@@ -96,6 +96,31 @@
                                        VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
+
+                    <Button x:Name="MetronomeBtn" MinWidth="60"
+                            Click="MetronomeBtn_Click" Margin="8,0,0,0"
+                            Background="#FF1E6B3A" Foreground="White" BorderThickness="0"
+                            Cursor="Hand" IsEnabled="False">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="6" Padding="12,4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="MetronomeEmoji" Text="🔊"
+                                     FontFamily="Segoe UI Emoji" FontSize="14"
+                                     Foreground="White" Background="Transparent" BorderThickness="0"
+                                     IsReadOnly="True" IsHitTestVisible="False"
+                                     TextOptions.TextFormattingMode="Display"
+                                     VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock x:Name="MetronomeText" Text="节拍器"
+                                       Foreground="White" FontWeight="Bold" FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
 
                 <TextBlock x:Name="TimeText" Text="0.000s"

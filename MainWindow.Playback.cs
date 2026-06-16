@@ -18,6 +18,10 @@ public partial class MainWindow
     {
         var handle = new WindowInteropHelper(this).Handle;
         Bass.BASS_Init(-1, 44100, BASSInit.BASS_DEVICE_DEFAULT, handle);
+        // 降低输出缓冲，提升 mixtime sync 触发的 click 与 BGM 的对齐精度
+        // 顺序：先设 update period（影响 buffer 最小值 buffer>=update+1），再设 buffer
+        Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_UPDATEPERIOD, 5);
+        Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_BUFFER, 10);
 
         // 启动时若指定了音频(--audio= 或位置参数),自动加载。
         // 延后一帧:确保 BASS_Init 已完成、UI 控件布局就绪,避免在 Loaded 同步栈中阻塞。
@@ -31,6 +35,7 @@ public partial class MainWindow
     private void Window_Closed(object sender, EventArgs e)
     {
         CompositionTarget.Rendering -= OnRenderingFrame;
+        FreeMetronomeClicks();
         StopAndFreeStreams();
         Bass.BASS_Free();
     }
@@ -66,7 +71,8 @@ public partial class MainWindow
     // ── Playback ──
 
     private void StopAndFreeStreams()
-    {
+    {ClearMetronomeSyncs();
+        
         if (_bgmStream != 0)
         {
             Bass.BASS_ChannelStop(_bgmStream);
@@ -147,6 +153,11 @@ public partial class MainWindow
         }
         LoadTimingLogger.Phase("BASS stream create");
 
+        // 节拍器：预生成 click 采样，并按歌曲 RMS 计算自适应 BGM 响度
+        EnsureMetronomeClicks();
+        ComputeClickAndBgmGain();
+        ApplyEffectiveBgmVolume();
+
         // Show loading indicator
         PlaceholderText.Visibility = Visibility.Collapsed;
         LoadingText.Visibility = Visibility.Visible;
@@ -187,6 +198,7 @@ public partial class MainWindow
 
         PlayPauseBtn.IsEnabled = true;
         StopBtn.IsEnabled = true;
+        MetronomeBtn.IsEnabled = true;
         PlayPauseEmoji.Text = "▶️";
         PlayPauseText.Text = Loc("Play");
 
@@ -197,7 +209,7 @@ public partial class MainWindow
         LoadTimingLogger.Phase("Render visuals");
 
         // Initialize timing state
-        _globalOffset = 0.1;
+        _globalOffset = 0.0;
         _rawPoints = new List<RawTimingPoint> { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
         OffsetStepper.SetRange(0, _audioData.Duration);
         RefreshTimingPoints();
@@ -231,6 +243,13 @@ public partial class MainWindow
         _isPlaying = true;
         CompositionTarget.Rendering += OnRenderingFrame;
         PlayPauseEmoji.Text = "⏸️";
+
+        if (_metronomeEnabled)
+        {
+            var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
+            ArmMetronome(Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos));
+        }
+        ClearMetronomeSyncs();
         PlayPauseText.Text = Loc("Pause");
     }
 
@@ -250,6 +269,7 @@ public partial class MainWindow
         if (_bgmStream == 0) return;
 
         CompositionTarget.Rendering -= OnRenderingFrame;
+        ClearMetronomeSyncs();
         if (_isPlaying)
         {
             Bass.BASS_ChannelPause(_bgmStream);
@@ -278,6 +298,7 @@ public partial class MainWindow
         TimeText.Text = $"{time:F3}s";
 
         RenderVisuals();
+        RefillMetronomeIfNeeded(time);
     }
 
     // ── Playback seeking ──
@@ -287,5 +308,80 @@ public partial class MainWindow
         if (_bgmStream == 0) return;
         var bytePos = Bass.BASS_ChannelSeconds2Bytes(_bgmStream, seconds);
         Bass.BASS_ChannelSetPosition(_bgmStream, bytePos);
+    }
+
+    // ── Metronome: adaptive click gain (优先) + BGM 压制(仅响歌) ──
+
+    private double _bgmAutoVol = 1.0;   // 节拍器开启时作用于 _bgmStream 的音量
+    private double _clickVol = 1.0;     // 作用于每个 click channel 的音量（0~1）
+    private const double HeadroomDb = 6.0;   // click 目标比歌曲 RMS 高 6 dB
+    private const double MinClickVol = 0.5;  // click 最低音量（安静歌避免太轻）
+    private const double MinBgmVol = 0.6;    // 仅当 click 拉满(1.0)仍不够时，BGM 才降，且最多降到 0.6
+
+    /// <summary>
+    /// 在歌曲加载时一次性决定响度策略：优先让 click 自身适配歌曲（VOL 0.5~1.0，BGM 不动）；
+    /// 仅当歌曲太响、click 拉满仍达不到目标时，才适度降低 BGM。
+    /// 结果写入 _clickVol 与 _bgmAutoVol。
+    /// </summary>
+    private void ComputeClickAndBgmGain()
+    {
+        _clickVol = 1.0;
+        _bgmAutoVol = 1.0;
+        if (_audioData == null || _metronomeClicks == null || _metronomeClicks.Length == 0)
+            return;
+
+        double songRms = _audioData.RmsLevel;
+        if (songRms < 1e-6) songRms = 1e-6;
+        // 基准取最弱档 RMS：保证连弱拍都能达到目标响度
+        double baselineRms = double.MaxValue;
+        foreach (var asset in _metronomeClicks)
+            if (asset.Rms < baselineRms) baselineRms = asset.Rms;
+
+        double headroom = Math.Pow(10.0, HeadroomDb / 20.0);     // click 目标 = songRms * headroom
+        double needGain = (songRms * headroom) / baselineRms;     // 让弱拍达标所需的 click 增益
+
+        if (needGain <= 1.0)
+        {
+            // click 自身足够：调 click gain，BGM 保持原音量
+            _clickVol = Math.Clamp(needGain, MinClickVol, 1.0);
+            _bgmAutoVol = 1.0;
+        }
+        else
+        {
+            // 歌曲太响：click 拉满，BGM 适度降低补足 headroom
+            _clickVol = 1.0;
+            _bgmAutoVol = Math.Clamp(1.0 / needGain, MinBgmVol, 1.0);
+        }
+    }
+
+    /// <summary>按当前节拍器开关状态应用 BGM 音量：开→_bgmAutoVol，关→原音量。</summary>
+    private void ApplyEffectiveBgmVolume()
+    {
+        if (_bgmStream == 0) return;
+        double vol = _metronomeEnabled ? _bgmAutoVol : 1.0;
+        Bass.BASS_ChannelSetAttribute(_bgmStream, BASSAttribute.BASS_ATTRIB_VOL, (float)vol);
+    }
+
+    private void MetronomeBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _metronomeEnabled = !_metronomeEnabled;
+        MetronomeEmoji.Text = _metronomeEnabled ? "🔊" : "🔇";
+        MetronomeBtn.Background = new SolidColorBrush(
+            _metronomeEnabled ? Color.FromRgb(0x1E, 0x6B, 0x3A)   // 启用：暗绿
+                              : Color.FromRgb(0x3A, 0x3A, 0x3A));   // 关闭：灰
+        ApplyEffectiveBgmVolume();
+        if (_isPlaying)
+        {
+            if (_metronomeEnabled)
+            {
+                EnsureMetronomeClicks();
+                var pos = Bass.BASS_ChannelGetPosition(_bgmStream);
+                ArmMetronome(Bass.BASS_ChannelBytes2Seconds(_bgmStream, pos));
+            }
+            else
+            {
+                ClearMetronomeSyncs();
+            }
+        }
     }
 }
