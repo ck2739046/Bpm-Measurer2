@@ -39,7 +39,7 @@ public static class PrecomputedAudioData
 
     public static WaveformEnvelope ComputeWaveform(short[] monoSamples, double duration)
     {
-        const int columnsPerSecond = 100;
+        const int columnsPerSecond = 400;
         var totalFrames = monoSamples.Length; // 已下混为 mono，长度即帧数
         var columns = Math.Max(1, (int)(duration * columnsPerSecond));
         var framesPerColumn = Math.Max(1, totalFrames / columns);
@@ -47,21 +47,31 @@ public static class PrecomputedAudioData
         var minValues = new short[columns];
         var maxValues = new short[columns];
 
-        Parallel.For(0, columns, PrecomputeParallel.Options, c =>
+        var parallelism = PrecomputeParallel.Options.MaxDegreeOfParallelism;
+        var chunkColumns = (columns + parallelism - 1) / parallelism;
+
+        Parallel.For(0, parallelism, PrecomputeParallel.Options, chunkIdx =>
         {
-            int startFrame = c * framesPerColumn;
-            int endFrame = Math.Min(startFrame + framesPerColumn, totalFrames);
-            short colMin = 0, colMax = 0;
+            int startCol = chunkIdx * chunkColumns;
+            int endCol = Math.Min(startCol + chunkColumns, columns);
+            if (startCol >= endCol) return;
 
-            for (int f = startFrame; f < endFrame; f++)
+            for (int c = startCol; c < endCol; c++)
             {
-                short val = monoSamples[f];
-                if (val < colMin) colMin = val;
-                if (val > colMax) colMax = val;
-            }
+                int startFrame = c * framesPerColumn;
+                int endFrame = Math.Min(startFrame + framesPerColumn, totalFrames);
+                short colMin = 0, colMax = 0;
 
-            minValues[c] = colMin;
-            maxValues[c] = colMax;
+                for (int f = startFrame; f < endFrame; f++)
+                {
+                    short val = monoSamples[f];
+                    if (val < colMin) colMin = val;
+                    if (val > colMax) colMax = val;
+                }
+
+                minValues[c] = colMin;
+                maxValues[c] = colMax;
+            }
         });
 
         return new WaveformEnvelope
