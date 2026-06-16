@@ -20,6 +20,5 @@
   <data name="Duration" xml:space="preserve"><value>时长: </value></data>
   <data name="Channels" xml:space="preserve"><value>声道: </value></data>
   <data name="Loading" xml:space="preserve"><value>正在加载...</value></data>
-  <data name="ComputingWaveform" xml:space="preserve"><value>正在计算波形...</value></data>
-  <data name="ComputingSpectrogram" xml:space="preserve"><value>正在计算频谱...</value></data>
+  <data name="LoadingAudio" xml:space="preserve"><value>正在加载音频...</value></data>
 </root>

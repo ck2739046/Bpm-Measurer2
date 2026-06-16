@@ -227,8 +227,8 @@ public partial class MainWindow : Window
         // Show loading indicator
         PlaceholderText.Visibility = Visibility.Collapsed;
         LoadingText.Visibility = Visibility.Visible;
-
-        LoadingText.Text = Loc("ComputingWaveform");
+        LoadingText.Text = Loc("LoadingAudio");
+        
         await Task.Run(() =>
         {
             _waveEnvelope = PrecomputedAudioData.ComputeWaveform(
@@ -237,7 +237,6 @@ public partial class MainWindow : Window
         LoadTimingLogger.Phase("Waveform precompute");
         _audioData.RawSamples = null!; // Free ~50MB+ for long audio, no longer needed
 
-        LoadingText.Text = Loc("ComputingSpectrogram");
         await Task.Run(() =>
         {
             _specCache = PrecomputedAudioData.ComputeSpectrogram(

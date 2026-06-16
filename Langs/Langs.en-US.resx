@@ -20,6 +20,5 @@
   <data name="Duration" xml:space="preserve"><value>Duration: </value></data>
   <data name="Channels" xml:space="preserve"><value>Channels: </value></data>
   <data name="Loading" xml:space="preserve"><value>Loading...</value></data>
-  <data name="ComputingWaveform" xml:space="preserve"><value>Computing waveform...</value></data>
-  <data name="ComputingSpectrogram" xml:space="preserve"><value>Computing spectrogram...</value></data>
+  <data name="LoadingAudio" xml:space="preserve"><value>Loading audio...</value></data>
 </root>
