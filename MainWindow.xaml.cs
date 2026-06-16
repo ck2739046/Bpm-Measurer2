@@ -79,6 +79,16 @@ public partial class MainWindow : Window
                 Dispatcher.BeginInvoke(() => LoadAudioFile(path));
             }
         };
+
+        PreviewKeyDown += (s, e) =>
+        {
+            if (e.Key == Key.Space)
+            {
+                e.Handled = true;
+                if (_isPlaying) PausePlayback();
+                else StartPlayback();
+            }
+        };
     }
 
     private void ApplyLocalizedTexts()
@@ -578,7 +588,10 @@ public partial class MainWindow : Window
     private void OnPlotMouseWheel(object sender, MouseWheelEventArgs e)
     {
         e.Handled = true;
-        ZoomXOnly(e.Delta > 0);
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            ZoomXOnly(e.Delta > 0);
+        else
+            SeekByWheel(e.Delta);
     }
 
     private void ZoomXOnly(bool zoomIn)
@@ -593,6 +606,18 @@ public partial class MainWindow : Window
             newHalf = 0.01;
 
         _viewHalfWidth = newHalf;
+        RenderVisuals();
+    }
+
+    private void SeekByWheel(double delta)
+    {
+        if (_audioData == null) return;
+        if (_isPlaying) PausePlayback();
+        double panAmount = -delta * _viewHalfWidth / 1000;
+        _viewCenterTime += panAmount;
+        _viewCenterTime = Math.Clamp(_viewCenterTime, 0, _audioData.Duration);
+        TimeText.Text = $"{_viewCenterTime:F3}s";
+        SeekBassTo(_viewCenterTime);
         RenderVisuals();
     }
 }
