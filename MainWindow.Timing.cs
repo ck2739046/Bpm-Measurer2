@@ -31,6 +31,7 @@ public partial class MainWindow
 
     private void UpdateRawBpm(Guid id, double bpm)
     {
+        if (_isPlaying) PausePlayback();
         bpm = Math.Clamp(Math.Round(bpm * 1000.0) / 1000.0, 10, 1000);
         for (int i = 0; i < _rawPoints.Count; i++)
         {
@@ -45,6 +46,7 @@ public partial class MainWindow
 
     private void UpdateRawBeatIndex(Guid id, double beatIndex)
     {
+        if (_isPlaying) PausePlayback();
         beatIndex = Math.Max(1, Math.Round(beatIndex));
 
         // Clamp to the frozen cap captured when this segment was created (does not change afterwards).
