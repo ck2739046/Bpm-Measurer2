@@ -30,4 +30,5 @@
   <data name="Segment_Label" xml:space="preserve"><value>Segment {0}</value></data>
   <data name="Beat_Label" xml:space="preserve"><value>Beat</value></data>
   <data name="StartTime_Label" xml:space="preserve"><value>Start:</value></data>
+  <data name="Segment_Illegal" xml:space="preserve"><value>beyond audio end</value></data>
 </root>

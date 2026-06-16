@@ -18,7 +18,7 @@ public static class TimingEngine
         var sorted = rawPoints.OrderBy(p => p.BeatIndex).ToList();
         var result = new List<TimingPoint>(sorted.Count);
 
-        result.Add(new TimingPoint(sorted[0].Id, 0, sorted[0].Bpm, offset));
+        result.Add(new TimingPoint(sorted[0].Id, 0, sorted[0].Bpm, offset, sorted[0].MaxBeatIndex));
 
         for (int i = 1; i < sorted.Count; i++)
         {
@@ -28,7 +28,7 @@ public static class TimingEngine
             var beatDiff = curr.BeatIndex - prev.BeatIndex;
             var duration = beatDiff * (60.0 / prev.Bpm);
 
-            result.Add(new TimingPoint(curr.Id, curr.BeatIndex, curr.Bpm, prev.Time + duration));
+            result.Add(new TimingPoint(curr.Id, curr.BeatIndex, curr.Bpm, prev.Time + duration, curr.MaxBeatIndex));
         }
 
         return result;

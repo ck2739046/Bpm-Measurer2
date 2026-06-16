@@ -30,4 +30,5 @@
   <data name="Segment_Label" xml:space="preserve"><value>段落 {0}</value></data>
   <data name="Beat_Label" xml:space="preserve"><value>拍索引 (Beat)</value></data>
   <data name="StartTime_Label" xml:space="preserve"><value>起始时间:</value></data>
+  <data name="Segment_Illegal" xml:space="preserve"><value>超出音频末尾</value></data>
 </root>
