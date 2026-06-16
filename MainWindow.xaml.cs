@@ -1427,6 +1427,15 @@ public partial class MainWindow : Window
                     error = Loc("ConfigImport_Err_NoOffset");
                     return false;
                 }
+                // A global_offset line must not also contain a segment or a second offset.
+                int offsetCount = Regex.Matches(line, @"global_offset\s*=", RegexOptions.IgnoreCase).Count;
+                bool lineHasBeat = Regex.IsMatch(line, @"beat_index\s*=", RegexOptions.IgnoreCase);
+                bool lineHasBpm = Regex.IsMatch(line, @"\bbpm\s*=", RegexOptions.IgnoreCase);
+                if (offsetCount > 1 || lineHasBeat || lineHasBpm)
+                {
+                    error = Loc("ConfigImport_Err_MultipleInLine");
+                    return false;
+                }
                 // Rule 1b: offset must be finite and non-negative.
                 // (NumberStyles.Number rejects scientific notation like 1e2.)
                 if (!double.IsFinite(offset) || offset < 0)
@@ -1450,6 +1459,17 @@ public partial class MainWindow : Window
                 if (!hasBeat || !hasBpm)
                 {
                     error = string.Format(Loc("ConfigImport_Err_MalformedSegment"), segNo);
+                    return false;
+                }
+
+                // Rule 3b: a segment line must contain exactly one beat_index and one bpm
+                // (no second segment, no global_offset mixed in).
+                int beatCount = Regex.Matches(line, @"beat_index\s*=", RegexOptions.IgnoreCase).Count;
+                int bpmCount = Regex.Matches(line, @"\bbpm\s*=", RegexOptions.IgnoreCase).Count;
+                bool lineHasOffset = Regex.IsMatch(line, @"global_offset\s*=", RegexOptions.IgnoreCase);
+                if (beatCount > 1 || bpmCount > 1 || lineHasOffset)
+                {
+                    error = string.Format(Loc("ConfigImport_Err_MultipleInLineSeg"), segNo);
                     return false;
                 }
 

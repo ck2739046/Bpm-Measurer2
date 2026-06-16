@@ -36,6 +36,8 @@
   <data name="ConfigImport_Err_NoOffset" xml:space="preserve"><value>缺少 global_offset，或其值无效</value></data>
   <data name="ConfigImport_Err_DuplicateOffset" xml:space="preserve"><value>global_offset 只能出现 1 次</value></data>
   <data name="ConfigImport_Err_NegativeOffset" xml:space="preserve"><value>global_offset 不能为负数</value></data>
+  <data name="ConfigImport_Err_MultipleInLine" xml:space="preserve"><value>global_offset 行不能混入其它内容</value></data>
+  <data name="ConfigImport_Err_MultipleInLineSeg" xml:space="preserve"><value>第 {0} 段所在行只能有一个段落</value></data>
   <data name="ConfigImport_Err_NoSegment" xml:space="preserve"><value>至少需要 1 个 bpm 段</value></data>
   <data name="ConfigImport_Err_MalformedSegment" xml:space="preserve"><value>第 {0} 段缺少 beat_index 或 bpm</value></data>
   <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>第 {0} 段的 beat_index 不是非负整数</value></data>

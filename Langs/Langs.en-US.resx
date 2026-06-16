@@ -36,6 +36,8 @@
   <data name="ConfigImport_Err_NoOffset" xml:space="preserve"><value>Missing or invalid global_offset</value></data>
   <data name="ConfigImport_Err_DuplicateOffset" xml:space="preserve"><value>global_offset may appear only once</value></data>
   <data name="ConfigImport_Err_NegativeOffset" xml:space="preserve"><value>global_offset must not be negative</value></data>
+  <data name="ConfigImport_Err_MultipleInLine" xml:space="preserve"><value>A global_offset line must not contain anything else</value></data>
+  <data name="ConfigImport_Err_MultipleInLineSeg" xml:space="preserve"><value>Segment {0}: a line may contain only one segment</value></data>
   <data name="ConfigImport_Err_NoSegment" xml:space="preserve"><value>At least 1 bpm segment is required</value></data>
   <data name="ConfigImport_Err_MalformedSegment" xml:space="preserve"><value>Segment {0} is missing beat_index or bpm</value></data>
   <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>Segment {0}: beat_index is not a non-negative integer</value></data>
