@@ -13,7 +13,7 @@ namespace BpmMeasurer;
 /// </summary>
 public static class SegmentRowFactory
 {
-    public static StackPanel BuildStaticField(string label, string value, Color foreColor, int column)
+    public static StackPanel BuildStaticField(string label, string value, Color foreColor, int column, int row = 0)
     {
         var panel = new StackPanel();
 
@@ -46,13 +46,14 @@ public static class SegmentRowFactory
         panel.Children.Add(box);
 
         Grid.SetColumn(panel, column);
+        Grid.SetRow(panel, row);
         return panel;
     }
 
     public static StackPanel BuildStepper(
         string label, double[] steps, double min, double max, int decimals,
         Color foreColor, Guid id, bool readOnly, double initialValue, int column,
-        Action<double> onChanged)
+        Action<double> onChanged, int row = 0)
     {
         var panel = new StackPanel();
         if (column == 1)
@@ -75,6 +76,7 @@ public static class SegmentRowFactory
         panel.Children.Add(stepper);
 
         Grid.SetColumn(panel, column);
+        Grid.SetRow(panel, row);
         return panel;
     }
 }

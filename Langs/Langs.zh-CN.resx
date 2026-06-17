@@ -24,6 +24,7 @@
   <data name="LoadingAudio" xml:space="preserve"><value>正在加载音频...</value></data>
   <data name="GlobalOffset_Label" xml:space="preserve"><value>全局起始偏移 (Offset)</value></data>
   <data name="Bpm_Label" xml:space="preserve"><value>BPM</value></data>
+  <data name="BeatsPerBar_Label" xml:space="preserve"><value>拍/小节</value></data>
   <data name="ImportConfig_Btn" xml:space="preserve"><value>导入配置</value></data>
   <data name="ExportConfig_Btn" xml:space="preserve"><value>导出配置</value></data>
   <data name="Segments_Title" xml:space="preserve"><value>变速段落</value></data>

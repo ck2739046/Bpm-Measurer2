@@ -24,6 +24,7 @@
   <data name="LoadingAudio" xml:space="preserve"><value>Loading audio...</value></data>
   <data name="GlobalOffset_Label" xml:space="preserve"><value>Global Offset</value></data>
   <data name="Bpm_Label" xml:space="preserve"><value>BPM</value></data>
+  <data name="BeatsPerBar_Label" xml:space="preserve"><value>Beats/Bar</value></data>
   <data name="ImportConfig_Btn" xml:space="preserve"><value>Import Config</value></data>
   <data name="ExportConfig_Btn" xml:space="preserve"><value>Export Config</value></data>
   <data name="Segments_Title" xml:space="preserve"><value>Segments</value></data>

@@ -2,7 +2,7 @@ using Un4seen.Bass;
 
 namespace BpmMeasurer;
 
-/// <summary>节拍器重音档位：强 / 弱（4/4 拍的 1 / 2·3·4 拍）。</summary>
+/// <summary>节拍器重音档位：强 / 弱（每小节首拍强，其余弱）。</summary>
 public enum ClickAccent { Strong, Weak }
 
 /// <summary>

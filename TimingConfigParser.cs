@@ -24,7 +24,7 @@ public static class TimingConfigParser
         error = null;
 
         bool hasOffset = false;
-        var parsed = new List<(long Beat, double Bpm)>();
+        var parsed = new List<(long Beat, double Bpm, int Beats)>();
         long prevBeat = long.MinValue;
         int segNo = 0;
 
@@ -133,7 +133,17 @@ public static class TimingConfigParser
                 prevBeat = beat;
 
                 bpm = Math.Clamp(bpm, 10, 1000);
-                parsed.Add((beat, bpm));
+
+                // Optional beats_per_bar (default 4, clamp 1-20 if present/out-of-range).
+                int beats = 4;
+                var bpb = Regex.Match(line, @"beats_per_bar\s*=\s*(\d+)", RegexOptions.IgnoreCase);
+                if (bpb.Success && int.TryParse(bpb.Groups[1].Value, NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out int bpbVal))
+                {
+                    beats = Math.Clamp(bpbVal, 1, 20);
+                }
+
+                parsed.Add((beat, bpm, beats));
             }
             // Lines with neither keyword are ignored (comments / unknown).
         }
@@ -160,8 +170,8 @@ public static class TimingConfigParser
         }
 
         // Build raw points. Imported points have no frozen cap.
-        foreach (var (beat, bpm) in parsed)
-            points.Add(new RawTimingPoint(Guid.NewGuid(), beat, bpm, double.MaxValue));
+        foreach (var (beat, bpm, beats) in parsed)
+            points.Add(new RawTimingPoint(Guid.NewGuid(), beat, bpm, double.MaxValue, beats));
 
         // Ensure a beat-0 anchor exists (engine forces the first point to beat 0 anyway).
         if (!points.Any(p => Math.Abs(p.BeatIndex) < 0.001))

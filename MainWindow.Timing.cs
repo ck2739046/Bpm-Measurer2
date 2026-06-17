@@ -37,7 +37,22 @@ public partial class MainWindow
         {
             if (_rawPoints[i].Id == id)
             {
-                _rawPoints[i] = new RawTimingPoint(id, _rawPoints[i].BeatIndex, bpm, _rawPoints[i].MaxBeatIndex);
+                _rawPoints[i] = new RawTimingPoint(id, _rawPoints[i].BeatIndex, bpm, _rawPoints[i].MaxBeatIndex, _rawPoints[i].BeatsPerBar);
+                break;
+            }
+        }
+        RefreshTimingPoints();
+    }
+
+    private void UpdateRawBeatsPerBar(Guid id, double beatsPerBar)
+    {
+        if (_isPlaying) PausePlayback();
+        int beats = (int)Math.Clamp(Math.Round(beatsPerBar), 1, 20);
+        for (int i = 0; i < _rawPoints.Count; i++)
+        {
+            if (_rawPoints[i].Id == id)
+            {
+                _rawPoints[i] = new RawTimingPoint(id, _rawPoints[i].BeatIndex, _rawPoints[i].Bpm, _rawPoints[i].MaxBeatIndex, beats);
                 break;
             }
         }
@@ -66,7 +81,7 @@ public partial class MainWindow
         {
             if (_rawPoints[i].Id == id)
             {
-                _rawPoints[i] = new RawTimingPoint(id, beatIndex, _rawPoints[i].Bpm, _rawPoints[i].MaxBeatIndex);
+                _rawPoints[i] = new RawTimingPoint(id, beatIndex, _rawPoints[i].Bpm, _rawPoints[i].MaxBeatIndex, _rawPoints[i].BeatsPerBar);
                 break;
             }
         }
@@ -180,10 +195,15 @@ public partial class MainWindow
                 grid.Children.Add(removeBtn);
             }
 
-            // Beat + BPM inputs
+            // Beat + BPM inputs (2 rows × 2 cols)
+            //   Row 0: offset(beat) | beats-per-bar
+            //   Row 1: BPM spanning both columns
             var inputsGrid = new Grid();
-            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10, GridUnitType.Star) });
-            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(23, GridUnitType.Star) });
+            inputsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            inputsGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6) });
+            inputsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            inputsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             Grid.SetRow(inputsGrid, 2);
             Grid.SetColumnSpan(inputsGrid, 2);
             grid.Children.Add(inputsGrid);
@@ -192,7 +212,7 @@ public partial class MainWindow
             if (isAnchor)
             {
                 beatField = SegmentRowFactory.BuildStaticField(
-                    Loc("Beat_Label"), "0", Color.FromRgb(0x99, 0x99, 0x99), 0);
+                    Loc("Beat_Label"), "0", Color.FromRgb(0x99, 0x99, 0x99), 0, 0);
             }
             else
             {
@@ -201,16 +221,25 @@ public partial class MainWindow
                     new[] { 1.0 }, 1, point.MaxBeatIndex, 0,
                     Color.FromRgb(0xDD, 0xDD, 0xDD),
                     point.Id, false, point.BeatIndex, 0,
-                    v => UpdateRawBeatIndex(point.Id, v));
+                    v => UpdateRawBeatIndex(point.Id, v), 0);
             }
             inputsGrid.Children.Add(beatField);
+
+            var bpbPanel = SegmentRowFactory.BuildStepper(
+                Loc("BeatsPerBar_Label"),
+                new[] { 1.0 }, 1, 20, 0,
+                Color.FromRgb(0xFF, 0xFF, 0xFF),
+                point.Id, false, point.BeatsPerBar, 1,
+                v => UpdateRawBeatsPerBar(point.Id, v), 0);
+            inputsGrid.Children.Add(bpbPanel);
 
             var bpmPanel = SegmentRowFactory.BuildStepper(
                 Loc("Bpm_Label"),
                 new[] { 10.0, 1.0, 0.1 }, 10, 1000, 3,
                 Color.FromRgb(0x00, 0xF2, 0xFF),
-                point.Id, false, point.Bpm, 1,
-                v => UpdateRawBpm(point.Id, v));
+                point.Id, false, point.Bpm, 0,
+                v => UpdateRawBpm(point.Id, v), 2);
+            Grid.SetColumnSpan(bpmPanel, 2);
             inputsGrid.Children.Add(bpmPanel);
 
             // Start time footer (red + warning when the segment is illegal)
