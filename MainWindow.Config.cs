@@ -58,9 +58,27 @@ public partial class MainWindow
             double duration = _audioData?.Duration ?? double.MaxValue;
             var text = TimingConfigSerializer.Serialize(_globalOffset, _timingPoints, duration);
             File.WriteAllText(dlg.FileName, text);
+
+            // 嵌入模式:写 manifest 告知宿主(HachimiDX)导出的配置路径与所用音频路径。
+            if (App.StartupNotifyPath is not null)
+            {
+                var manifest = new
+                {
+                    config_path = dlg.FileName,
+                    audio_path = _audioData!.FilePath ?? ""
+                };
+                var json = System.Text.Json.JsonSerializer.Serialize(manifest);
+                File.WriteAllText(App.StartupNotifyPath, json);
+                App.EmbeddedExported = true;
+            }
         }
         catch (Exception ex)
         {
+            // 嵌入模式:写盘失败以退出码 2 告知宿主。
+            if (App.StartupNotifyPath is not null)
+            {
+                Environment.Exit(2);
+            }
             MessageBox.Show($"{Loc("ConfigExport_Failed")}\n{ex.Message}",
                 Loc("Error"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
