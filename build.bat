@@ -56,6 +56,19 @@ if exist "%RELEASE_DIR%" (
     set FAILED=1
 )
 
+REM 4. Copy LICENSE into the "Bpm Measurer" app folder
+if exist "%TARGET_DIR%" (
+    echo Copying LICENSE to "%TARGET_DIR%" ...
+    copy /y "LICENSE" "%TARGET_DIR%\" >nul
+    if errorlevel 1 (
+        echo Error: copy LICENSE failed.
+        set FAILED=1
+    )
+) else (
+    echo Error: "%TARGET_DIR%" not found, cannot copy LICENSE.
+    set FAILED=1
+)
+
 if "%FAILED%"=="1" (
     echo Packaging failed.
     pause
