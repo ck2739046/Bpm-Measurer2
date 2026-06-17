@@ -1,0 +1,7 @@
+﻿# Timing config for test
+global_offset = 0.0
+
+// first segment
+beat_index = 0, bpm = 120
+# second segment
+beat_index = 64, bpm = 160

@@ -31,6 +31,9 @@
         <PackageReference Include="XAMLMarkupExtensions" Version="2.1.3" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Remove="test\**\*.cs" />
+    </ItemGroup>
+    <ItemGroup>
         <ContentWithTargetPath Include="bass.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>bass.dll</TargetPath>

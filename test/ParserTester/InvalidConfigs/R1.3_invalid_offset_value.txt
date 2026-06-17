@@ -1,0 +1,2 @@
+﻿global_offset = abc
+beat_index = 0, bpm = 120

@@ -26,4 +26,8 @@ dist-ssr
 
 bin/
 obj/
-test/
+
+test/*.mp3
+test/*.ogg
+test/ParserTester/bin
+test/ParserTester/obj

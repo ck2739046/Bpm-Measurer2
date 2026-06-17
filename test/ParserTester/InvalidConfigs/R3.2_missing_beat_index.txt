@@ -1,0 +1,2 @@
+﻿global_offset = 0.0
+bpm = 120
