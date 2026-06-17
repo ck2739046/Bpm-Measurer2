@@ -51,13 +51,13 @@
   <data name="HelpDlg_Close" xml:space="preserve"><value>Close</value></data>
   <data name="Help_Op1" xml:space="preserve"><value>Drag waveform / spectrogram area</value></data>
   <data name="Help_Desc1" xml:space="preserve"><value>Adjust audio playback position</value></data>
-  <data name="Help_Op2" xml:space="preserve"><value>Drag blank area of the middle beat ruler</value></data>
-  <data name="Help_Desc2" xml:space="preserve"><value>Adjust the global start offset (Global Offset)</value></data>
-  <data name="Help_Op3" xml:space="preserve"><value>Drag a triangle marker in the middle beat ruler</value></data>
-  <data name="Help_Desc3" xml:space="preserve"><value>Adjust the BPM of the current tempo section</value></data>
-  <data name="Help_Op4" xml:space="preserve"><value>Mouse wheel</value></data>
-  <data name="Help_Desc4" xml:space="preserve"><value>Adjust audio playback position</value></data>
-  <data name="Help_Op5" xml:space="preserve"><value>Ctrl + Mouse wheel</value></data>
+  <data name="Help_Op2" xml:space="preserve"><value>Scroll wheel</value></data>
+  <data name="Help_Desc2" xml:space="preserve"><value>Adjust audio playback position</value></data>
+  <data name="Help_Op3" xml:space="preserve"><value>Drag blank area of the middle beat ruler</value></data>
+  <data name="Help_Desc3" xml:space="preserve"><value>Adjust the global offset</value></data>
+  <data name="Help_Op4" xml:space="preserve"><value>Drag a triangle marker in the middle beat ruler</value></data>
+  <data name="Help_Desc4" xml:space="preserve"><value>Adjust the BPM of the current tempo section</value></data>
+  <data name="Help_Op5" xml:space="preserve"><value>Ctrl + Scroll wheel</value></data>
   <data name="Help_Desc5" xml:space="preserve"><value>Zoom the timeline view</value></data>
   <data name="Help_Op6" xml:space="preserve"><value>Space key</value></data>
   <data name="Help_Desc6" xml:space="preserve"><value>Play / Pause</value></data>

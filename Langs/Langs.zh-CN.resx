@@ -30,7 +30,7 @@
   <data name="Segments_Title" xml:space="preserve"><value>变速段落</value></data>
   <data name="AddSegment_Btn" xml:space="preserve"><value>+ 添加</value></data>
   <data name="Segment_Label" xml:space="preserve"><value>段落 {0}</value></data>
-  <data name="Beat_Label" xml:space="preserve"><value>拍索引 (Beat)</value></data>
+  <data name="Beat_Label" xml:space="preserve"><value>拍索引</value></data>
   <data name="StartTime_Label" xml:space="preserve"><value>起始时间:</value></data>
   <data name="Segment_Illegal" xml:space="preserve"><value>超出音频末尾</value></data>
   <data name="ConfigImport_Failed" xml:space="preserve"><value>配置文件解析失败。</value></data>
@@ -51,14 +51,14 @@
   <data name="HelpDlg_Close" xml:space="preserve"><value>关闭</value></data>
   <data name="Help_Op1" xml:space="preserve"><value>鼠标拖动音频波形区 / 频谱区</value></data>
   <data name="Help_Desc1" xml:space="preserve"><value>调整音频播放进度</value></data>
-  <data name="Help_Op2" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的空白区域</value></data>
-  <data name="Help_Desc2" xml:space="preserve"><value>调整全局起始偏移（Global Offset）</value></data>
-  <data name="Help_Op3" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的三角形标记</value></data>
-  <data name="Help_Desc3" xml:space="preserve"><value>调整当前变速段的 BPM 值</value></data>
-  <data name="Help_Op4" xml:space="preserve"><value>鼠标滚轮</value></data>
-  <data name="Help_Desc4" xml:space="preserve"><value>调整音频播放进度</value></data>
+  <data name="Help_Op2" xml:space="preserve"><value>鼠标滚轮</value></data>
+  <data name="Help_Desc2" xml:space="preserve"><value>调整音频播放进度</value></data>
+  <data name="Help_Op3" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的空白区域</value></data>
+  <data name="Help_Desc3" xml:space="preserve"><value>调整全局起始偏移（Global Offset）</value></data>
+  <data name="Help_Op4" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的三角形标记</value></data>
+  <data name="Help_Desc4" xml:space="preserve"><value>调整当前变速段的 BPM 值</value></data>
   <data name="Help_Op5" xml:space="preserve"><value>Ctrl + 鼠标滚轮</value></data>
   <data name="Help_Desc5" xml:space="preserve"><value>缩放时间轴视图</value></data>
-  <data name="Help_Op6" xml:space="preserve"><value>Space 键</value></data>
+  <data name="Help_Op6" xml:space="preserve"><value>空格键</value></data>
   <data name="Help_Desc6" xml:space="preserve"><value>播放 / 暂停</value></data>
 </root>
