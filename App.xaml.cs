@@ -84,14 +84,15 @@ public partial class App : Application
         StartupNotifyPath = string.IsNullOrWhiteSpace(StartupNotifyPath) ? null : StartupNotifyPath;
         StartupParseConfigPath = string.IsNullOrWhiteSpace(StartupParseConfigPath) ? null : StartupParseConfigPath;
 
+        // 先设定 culture,确保无头模式(以及后续 GUI)的本地化文案遵循 --language。
+        LocalizeDictionary.Instance.Culture = new CultureInfo(lang);
+
         // 无头模式:--parse_config 与 --notify 同时出现时,解析配置并把 JSON 写入 notify 文件后立即退出。
         // 缺少 --notify 时静默忽略 --parse_config,正常启动 GUI。
         if (StartupParseConfigPath is not null && StartupNotifyPath is not null)
         {
             RunHeadlessConfigExport();
         }
-
-        LocalizeDictionary.Instance.Culture = new CultureInfo(lang);
     }
 
     protected override void OnExit(ExitEventArgs e)
