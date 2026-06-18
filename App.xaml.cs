@@ -19,6 +19,12 @@ public partial class App : Application
     /// </summary>
     public static string? StartupNotifyPath { get; private set; }
 
+    /// <summary>
+    /// 启动时指定的配置文件路径(--parse_config=),用于无头解析并导出 JSON 到 --notify 路径。
+    /// 仅在与 --notify= 同时出现时生效;缺 --notify 时静默忽略,正常启动 GUI。
+    /// </summary>
+    public static string? StartupParseConfigPath { get; private set; }
+
     /// <summary>嵌入模式下是否已成功导出(供 OnExit 决定退出码)。</summary>
     public static bool EmbeddedExported { get; set; }
 
@@ -49,6 +55,10 @@ public partial class App : Application
             {
                 StartupNotifyPath = args[i].Substring("--notify=".Length);
             }
+            else if (args[i].StartsWith("--parse_config=", StringComparison.OrdinalIgnoreCase))
+            {
+                StartupParseConfigPath = args[i].Substring("--parse_config=".Length);
+            }
         }
 
         // 兼容位置参数(拖入 exe 图标 / `Bpm Measurer.exe "song.mp3"`):
@@ -72,6 +82,14 @@ public partial class App : Application
         // 空字符串视为未指定
         StartupAudioPath = string.IsNullOrWhiteSpace(StartupAudioPath) ? null : StartupAudioPath;
         StartupNotifyPath = string.IsNullOrWhiteSpace(StartupNotifyPath) ? null : StartupNotifyPath;
+        StartupParseConfigPath = string.IsNullOrWhiteSpace(StartupParseConfigPath) ? null : StartupParseConfigPath;
+
+        // 无头模式:--parse_config 与 --notify 同时出现时,解析配置并把 JSON 写入 notify 文件后立即退出。
+        // 缺少 --notify 时静默忽略 --parse_config,正常启动 GUI。
+        if (StartupParseConfigPath is not null && StartupNotifyPath is not null)
+        {
+            RunHeadlessConfigExport();
+        }
 
         LocalizeDictionary.Instance.Culture = new CultureInfo(lang);
     }
