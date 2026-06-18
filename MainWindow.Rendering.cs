@@ -7,9 +7,9 @@ namespace BpmMeasurer;
 
 /// <summary>
 /// Per-frame render orchestration, OverlayCanvas ↔ time coordinate conversion,
-/// and the beat grid / beat-row overlays. Extracted from MainWindow as a partial —
-/// logic unchanged; <c>GetVertInterval</c>/<c>GetShowInterval</c> now delegate to
-/// <see cref="BeatGridMath"/>.
+/// and the beat grid / beat-row overlays. Extracted from MainWindow as a partial.
+/// Beat-row triangle/number density delegates to <see cref="BeatGridMath.GetBarDensityInterval"/>
+/// (per-segment, time-signature-anchored); vertical beat lines use <see cref="BeatGridMath.GetVertInterval"/>.
 /// </summary>
 public partial class MainWindow
 {
@@ -199,7 +199,7 @@ public partial class MainWindow
 
             double interval = 60.0 / point.Bpm;
             double pxPerBeat = canvasW / dataSpan * interval;
-            int showInterval = BeatGridMath.GetShowInterval(pxPerBeat);
+            int densityInterval = BeatGridMath.GetBarDensityInterval(pxPerBeat, point.BeatsPerBar);
             double startTimeOffset = Math.Max(0, leftTime - point.Time);
             int startRelBeat = Math.Max(0, (int)Math.Ceiling(startTimeOffset / interval));
 
@@ -216,14 +216,15 @@ public partial class MainWindow
                 double x = TimeToCanvasX(beatTime);
                 if (x < -50 || x > canvasW + 50) { relBeat++; continue; }
 
-                int globalBeatIndex = (int)point.BeatIndex + relBeat;
-
-                // Show number + triangles based on density interval
+                // Show triangle+number based on per-segment bar density, anchored at segment start.
+                // Section-start (relBeat==0) is always shown even if the grid would hide it.
                 bool isSectionStart = (relBeat == 0);
-                bool showHere = isSectionStart || (globalBeatIndex % showInterval == 0);
+                bool showHere = isSectionStart || (relBeat % densityInterval == 0);
 
                 if (showHere)
                 {
+                    int globalBeatIndex = (int)point.BeatIndex + relBeat;
+
                     var beatColor = isSectionStart
                         ? new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80))
                         : Brushes.White;

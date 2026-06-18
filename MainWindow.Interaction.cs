@@ -33,13 +33,17 @@ public partial class MainWindow
             double beatTimeAtIdx = TimingEngine.GetTimeAtBeatIndex(globalIdx, _timingPoints);
             double pixelDist = Math.Abs(TimeToCanvasX(beatTimeAtIdx) - x);
 
-            // Density based on the segment under the mouse (multi-BPM aware).
+            // Density based on the segment under the mouse (multi-BPM aware, per-segment time signature).
             var (segAtMouse, _) = TimingEngine.GetPointAtTime(mouseTime, _timingPoints);
             double dataSpan = _viewHalfWidth * 2.0;
             double canvasW = OverlayCanvas.ActualWidth;
             double pxPerBeat = canvasW / dataSpan * (60.0 / segAtMouse.Bpm);
-            int showInterval = BeatGridMath.GetShowInterval(pxPerBeat);
-            bool onTriangle = (globalIdx >= 0) && (globalIdx % showInterval == 0) && pixelDist < 15;
+            int densityInterval = BeatGridMath.GetBarDensityInterval(pxPerBeat, segAtMouse.BeatsPerBar);
+            long relBeatAtMouse = globalIdx - (long)segAtMouse.BeatIndex;
+            // A triangle is draggable iff it is visually shown: section-start (relBeat==0) is always
+            // shown; otherwise the beat must land on the per-segment bar-density grid.
+            bool onTriangle = (globalIdx >= 0) && pixelDist < 15
+                              && (relBeatAtMouse == 0 || relBeatAtMouse % densityInterval == 0);
 
             if (onTriangle && globalIdx == 0)
             {
