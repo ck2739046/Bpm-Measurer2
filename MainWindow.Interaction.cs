@@ -9,10 +9,17 @@ namespace BpmMeasurer;
 /// </summary>
 public partial class MainWindow
 {
+    // ── Focus management ──
+    // Bubbling handler shared by top bar, bottom status bar, and sidebar
+    // clicking their blank areas clears keyboard focus
+    private void BlankArea_MouseDown(object sender, MouseButtonEventArgs e) => Keyboard.ClearFocus();
+
     // ── OverlayCanvas mouse events ──
 
     private void OverlayCanvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        Keyboard.ClearFocus();
+
         if (_audioData == null || _timingPoints.Count == 0) return;
 
         var pos = e.GetPosition(OverlayCanvas);

@@ -20,7 +20,8 @@
         </Grid.RowDefinitions>
 
         <!-- Top Toolbar -->
-        <Border Grid.Row="0" Background="#FF1A1A1A" Padding="10,8">
+        <Border Grid.Row="0" Background="#FF1A1A1A" Padding="10,8"
+                MouseLeftButtonDown="BlankArea_MouseDown">
             <Grid>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="OpenBtn" MinWidth="60"
@@ -225,6 +226,7 @@
             <!-- Column 1: Right Sidebar Panel -->
             <Border Grid.Column="1" x:Name="SidebarPanel"
                     Background="#FF111111" BorderBrush="#FF222222" BorderThickness="1,0,0,0"
+                    MouseLeftButtonDown="BlankArea_MouseDown"
                     Visibility="Collapsed">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -341,7 +343,8 @@
         </Grid>
 
         <!-- Bottom Status Bar -->
-        <Border Grid.Row="2" Background="#FF1A1A1A" Padding="10,4">
+        <Border Grid.Row="2" Background="#FF1A1A1A" Padding="10,4"
+                MouseLeftButtonDown="BlankArea_MouseDown">
             <Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <TextBlock Foreground="#FF555555" FontSize="11" VerticalAlignment="Center">

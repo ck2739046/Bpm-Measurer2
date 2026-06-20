@@ -80,7 +80,7 @@ public partial class StepperInput : UserControl
         _textBox.Padding = new Thickness(2, 3, 2, 3);
         _textBox.Height = 24;
         _textBox.IsReadOnly = _readOnly;
-        _textBox.LostFocus += TextBox_Commit;
+        _textBox.LostKeyboardFocus += TextBox_Commit;
         _textBox.KeyDown += TextBox_KeyDown;
         Grid.SetColumn(_textBox, n);
         RootGrid.Children.Add(_textBox);
