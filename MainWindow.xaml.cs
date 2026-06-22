@@ -58,6 +58,30 @@ public partial class MainWindow : Window
     private double _dragTargetSegBeat;
     private SolidColorBrush? _dragDisplayColor;
 
+    // Focus region state (independent of WPF keyboard focus)
+    // _plotAreaHasFocus: VizGrid currently holds focus; _sidebarHasFocus: SidebarPanel currently holds focus.
+    // _focusJustTransferred: marks the first gesture entering a region — suppresses click actions
+    // (no seek / no offset / no BPM change) until a >3px drag confirms intent.
+    private bool _plotAreaHasFocus;
+    private bool _sidebarHasFocus;
+    private bool _focusJustTransferred;
+
+    private static readonly SolidColorBrush FocusHighlightBrush =
+        new(Color.FromRgb(0x81, 0x8C, 0xF8));
+
+    /// <summary>
+    /// Toggles the overlay highlight borders around VizGrid and SidebarPanel based on the
+    /// current focus-region state. BorderThickness stays constant (2px) — only the brush
+    /// switches between transparent and the indigo highlight, so layout never shifts.
+    /// </summary>
+    private void UpdateFocusHighlights()
+    {
+        if (PlotAreaHighlight != null)
+            PlotAreaHighlight.BorderBrush = _plotAreaHasFocus ? FocusHighlightBrush : Brushes.Transparent;
+        if (SidebarHighlight != null)
+            SidebarHighlight.BorderBrush = _sidebarHasFocus ? FocusHighlightBrush : Brushes.Transparent;
+    }
+
     public MainWindow()
     {
         InitializeComponent();

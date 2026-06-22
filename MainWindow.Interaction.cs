@@ -10,15 +10,45 @@ namespace BpmMeasurer;
 public partial class MainWindow
 {
     // ── Focus management ──
-    // Bubbling handler shared by top bar, bottom status bar, and sidebar
-    // clicking their blank areas clears keyboard focus
-    private void BlankArea_MouseDown(object sender, MouseButtonEventArgs e) => Keyboard.ClearFocus();
+    // Bubbling handler shared by top toolbar and bottom status bar (areas outside the two
+    // focus regions). Clears keyboard focus and both region highlights — clicking outside
+    // VizGrid / SidebarPanel deselects both regions.
+    private void BlankArea_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        Keyboard.ClearFocus();
+        _plotAreaHasFocus = false;
+        _sidebarHasFocus = false;
+        _focusJustTransferred = false;
+        UpdateFocusHighlights();
+    }
+
+    // Tunneling handler for the right sidebar: any press inside the sidebar (including on
+    // buttons, text boxes, StepperInput) counts as focusing the sidebar region. Does NOT
+    // clear keyboard focus, so TextBoxes can still receive keyboard focus for typing.
+    private void SidebarPanel_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _sidebarHasFocus = true;
+        _plotAreaHasFocus = false;
+        _focusJustTransferred = false;
+        UpdateFocusHighlights();
+    }
 
     // ── OverlayCanvas mouse events ──
 
     private void OverlayCanvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
         Keyboard.ClearFocus();
+
+        // Focus-region transfer: the first gesture entering the plot area only moves focus
+        // (no seek / no offset / no BPM change). Subsequent gestures act normally.
+        // A confirmed drag (>3px, detected in MouseMove) clears the flag and is processed directly.
+        if (!_plotAreaHasFocus)
+        {
+            _plotAreaHasFocus = true;
+            _sidebarHasFocus = false;
+            _focusJustTransferred = true;
+            UpdateFocusHighlights();
+        }
 
         if (_audioData == null || _timingPoints.Count == 0) return;
 
@@ -114,6 +144,15 @@ public partial class MainWindow
         double x = pos.X;
         double mouseTime = CanvasXToTime(x);
 
+        // First-gesture gate: while a focus transfer is pending and the pointer has not yet moved
+        // beyond the 3px click-vs-drag threshold, suppress all drag actions. Once movement exceeds
+        // the threshold, treat it as a real drag (focus transfer completes, normal processing resumes).
+        if (_focusJustTransferred)
+        {
+            if (Math.Abs(x - _dragStartX) <= 3) return;
+            _focusJustTransferred = false;
+        }
+
         switch (_dragMode)
         {
             case DragMode.Offset:
@@ -170,7 +209,7 @@ public partial class MainWindow
 
     private void OverlayCanvas_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (_dragMode == DragMode.Seek)
+        if (_dragMode == DragMode.Seek && !_focusJustTransferred)
         {
             // If no significant drag movement, treat as click-to-seek
             var pos = e.GetPosition(OverlayCanvas);
@@ -189,6 +228,7 @@ public partial class MainWindow
         }
 
         _dragMode = DragMode.None;
+        _focusJustTransferred = false;
         OverlayCanvas.ReleaseMouseCapture();
         if (_dragDisplayColor != null)
         {

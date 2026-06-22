@@ -221,12 +221,19 @@
                            Foreground="#FF818CF8" FontSize="20" FontWeight="Bold"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Visibility="Collapsed"/>
+
+                <!-- Focus highlight overlay: covers all three rows of VizGrid.
+                     Thickness fixed at 2; only BorderBrush switches (transparent ↔ indigo),
+                     so there is no layout shift. Non-hit-test so it never blocks mouse input. -->
+                <Border x:Name="PlotAreaHighlight" Grid.RowSpan="3"
+                        BorderBrush="Transparent" BorderThickness="2"
+                        IsHitTestVisible="False" Panel.ZIndex="100"/>
             </Grid>
 
             <!-- Column 1: Right Sidebar Panel -->
             <Border Grid.Column="1" x:Name="SidebarPanel"
                     Background="#FF111111" BorderBrush="#FF222222" BorderThickness="1,0,0,0"
-                    MouseLeftButtonDown="BlankArea_MouseDown"
+                    PreviewMouseLeftButtonDown="SidebarPanel_PreviewMouseDown"
                     Visibility="Collapsed">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -338,6 +345,13 @@
                             </ScrollViewer>
                         </Grid>
                     </Border>
+
+                    <!-- Focus highlight overlay: covers all three rows of the sidebar.
+                         Thickness fixed at 2; only BorderBrush switches (transparent ↔ indigo),
+                         so there is no layout shift. Non-hit-test so it never blocks child input. -->
+                    <Border x:Name="SidebarHighlight" Grid.RowSpan="3"
+                            BorderBrush="Transparent" BorderThickness="2"
+                            IsHitTestVisible="False" Panel.ZIndex="100"/>
                 </Grid>
             </Border>
         </Grid>
