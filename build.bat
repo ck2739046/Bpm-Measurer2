@@ -6,7 +6,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Build succeeded. Packaging release...
+REM Clean obj folder
+echo Cleaning obj folder...
+rmdir /s /q "obj" 2>nul
+
+
+
 
 set RELEASE_DIR=bin\Release
 set TARGET_NAME=Bpm Measurer
