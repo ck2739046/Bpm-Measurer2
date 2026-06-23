@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows.Input;
 using StateManagement;
 
@@ -116,6 +117,8 @@ public partial class MainWindow
     private void PerformUndoRedo(bool redo)
     {
         if (_isPlaying) PausePlayback();
+        // Snapshot the raw data by id so we can detect which segment changed.
+        var oldById = _rawPoints.ToDictionary(p => p.Id);
         _applyingUndo = true;
         try
         {
@@ -129,6 +132,21 @@ public partial class MainWindow
         // Re-sync the dedup mirror so a subsequent edit that returns to this value
         // is still recorded, and undo-then-immediately-redo of a no-op isn't skipped.
         _lastRecorded = CaptureTiming();
+
+        // Auto-expand the segment whose value actually changed (undo/redo may have
+        // touched any combination of offset / beat / bpm / beats-per-bar).
+        foreach (var kv in oldById)
+        {
+            var match = _rawPoints.Find(p => p.Id == kv.Key);
+            if (match.Equals(default)) continue;
+            if (!kv.Value.Equals(match))
+            {
+                _expandedSegmentId = kv.Key;
+                RebuildSegmentList();
+                break;
+            }
+        }
+
         // Keep keyboard focus on a valid Focusable anchor so the next keyboard
         // route stays valid.
         if (OverlayCanvas.IsVisible)

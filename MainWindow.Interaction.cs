@@ -200,6 +200,8 @@ public partial class MainWindow
                 double timeDiff = mouseTime - seg.Time;
                 if (beatsFromStart > 0 && timeDiff > 0.001)
                 {
+                    // Auto-expand this segment so the user sees the BPM change live.
+                    _expandedSegmentId = seg.Id;
                     double rawBpm = (beatsFromStart * 60.0) / timeDiff;
                     UpdateRawBpm(seg.Id, rawBpm);
                 }
