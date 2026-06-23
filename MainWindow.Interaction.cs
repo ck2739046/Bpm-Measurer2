@@ -168,7 +168,15 @@ public partial class MainWindow
             {
                 double deltaTime = mouseTime - _dragStartTime;
                 double newOffset = _dragStartOffset + deltaTime;
-                _globalOffset = Math.Max(0, Math.Min(newOffset, _audioData.Duration));
+                double clampedOffset = Math.Max(0, Math.Min(newOffset, _audioData.Duration));
+                if (clampedOffset <= 0.001 && _globalOffset > 0.001)
+                {
+                    DebugLog.Log(
+                        $"Offset drag hit start: newOffset={newOffset} clamped={clampedOffset} " +
+                        $"mouseTime={mouseTime} dragStartTime={_dragStartTime} " +
+                        $"viewHalfWidth={_viewHalfWidth} viewCenterTime={_viewCenterTime}");
+                }
+                _globalOffset = clampedOffset;
                 RefreshTimingPoints();
                 break;
             }
@@ -279,6 +287,8 @@ public partial class MainWindow
             newHalf = _audioData.Duration;
         if (newHalf < 0.01)
             newHalf = 0.01;
+
+        DebugLog.Log($"Zoom direction={(zoomIn ? "in" : "out")} halfWidth={_viewHalfWidth:F6}->{newHalf:F6} centerTime={_viewCenterTime:F3}");
 
         _viewHalfWidth = newHalf;
         RenderVisuals();

@@ -30,6 +30,31 @@ public partial class App : Application
 
     public App()
     {
+        // ── 全局崩溃日志 ──
+        // 捕获所有未处理异常，写入 exe 所在目录的 crash_*.txt。
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            if (e.ExceptionObject is Exception ex)
+                DebugLog.LogCrash("AppDomain.UnhandledException", ex);
+            else
+                DebugLog.Log($"AppDomain.UnhandledException (non-Exception): {e.ExceptionObject}");
+        };
+
+        DispatcherUnhandledException += (_, e) =>
+        {
+            DebugLog.LogCrash("DispatcherUnhandledException", e.Exception);
+            // 不阻止进程退出：对于崩溃性异常，让进程自然终止。
+            // 如果希望尝试恢复，可以设 e.Handled = true。
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            DebugLog.LogCrash("TaskScheduler.UnobservedTaskException", e.Exception);
+            e.SetObserved(); // 防止进程被终结
+        };
+
+        DebugLog.Log("App started");
+
         LocalizeDictionary.Instance.SetCurrentThreadCulture = true;
 
         var args = Environment.GetCommandLineArgs();

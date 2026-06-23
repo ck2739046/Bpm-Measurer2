@@ -17,6 +17,22 @@ public partial class MainWindow
     {
         if (_audioData == null || _waveEnvelope == null || _specCache == null) return;
 
+        try
+        {
+            RenderVisualsCore();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Log($"RenderVisuals CRASH: viewHalfWidth={_viewHalfWidth}, viewCenterTime={_viewCenterTime}");
+            // 仅记录上下文到缓冲区，不在此写 crashtxt；
+            // rethrow 后由全局 DispatcherUnhandledException 统一落盘。
+            DebugLog.Log($"RenderVisuals exception: {ex.GetType().FullName}: {ex.Message}");
+            throw;
+        }
+    }
+
+    private void RenderVisualsCore()
+    {
         if (!_plotsConfigured || !_specConfigured)
             EnsurePlotsConfigured();
 

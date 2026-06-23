@@ -73,11 +73,23 @@ public partial class MainWindow
         // Scale: fit (2 * viewHalfWidth) seconds into canvas width
         double scaleX = canvasW / (2.0 * _viewHalfWidth * pixelsPerSec);
         double canvasH = WaveformCanvas.ActualHeight;
-        WaveScale.ScaleX = scaleX;
-        WaveScale.ScaleY = canvasH > 0 ? canvasH / WaveformBitmapRenderer.BitmapHeight : 1.0;
 
         // Translate: left-align the view to (_viewCenterTime - viewHalfWidth) seconds
         double translateX = -(_viewCenterTime - _viewHalfWidth) * pixelsPerSec * scaleX;
+
+        // 异常值检测：NaN/Infinity 或极端 scale 会导致 WPF 渲染层崩溃
+        if (double.IsNaN(scaleX) || double.IsInfinity(scaleX) ||
+            double.IsNaN(translateX) || double.IsInfinity(translateX) ||
+            Math.Abs(scaleX) > 1e7 || Math.Abs(translateX) > 1e9)
+        {
+            DebugLog.Log(
+                $"WAVEFORM BAD TRANSFORM: scaleX={scaleX} translateX={translateX} " +
+                $"viewHalfWidth={_viewHalfWidth} viewCenterTime={_viewCenterTime} " +
+                $"canvasW={canvasW} pixelsPerSec={pixelsPerSec} duration={_waveEnvelope.Duration}");
+        }
+
+        WaveScale.ScaleX = scaleX;
+        WaveScale.ScaleY = canvasH > 0 ? canvasH / WaveformBitmapRenderer.BitmapHeight : 1.0;
         WaveTranslate.X = translateX;
         WaveTranslate.Y = 0;
     }
@@ -94,11 +106,21 @@ public partial class MainWindow
         // Scale: fit (2 * viewHalfWidth) seconds into canvas width
         double scaleX = canvasW / (2.0 * _viewHalfWidth * pixelsPerSec);
         double canvasH = SpectrogramCanvas.ActualHeight;
-        SpecScale.ScaleX = scaleX;
-        SpecScale.ScaleY = canvasH > 0 ? canvasH / _specCache.FreqBands : 1.0;
 
         // Translate: left-align the view to (_viewCenterTime - viewHalfWidth) seconds
         double translateX = -(_viewCenterTime - _viewHalfWidth) * pixelsPerSec * scaleX;
+
+        if (double.IsNaN(scaleX) || double.IsInfinity(scaleX) ||
+            double.IsNaN(translateX) || double.IsInfinity(translateX) ||
+            Math.Abs(scaleX) > 1e7 || Math.Abs(translateX) > 1e9)
+        {
+            DebugLog.Log(
+                $"SPECTROGRAM BAD TRANSFORM: scaleX={scaleX} translateX={translateX} " +
+                $"viewHalfWidth={_viewHalfWidth} viewCenterTime={_viewCenterTime}");
+        }
+
+        SpecScale.ScaleX = scaleX;
+        SpecScale.ScaleY = canvasH > 0 ? canvasH / _specCache.FreqBands : 1.0;
         SpecTranslate.X = translateX;
         SpecTranslate.Y = 0;
     }
