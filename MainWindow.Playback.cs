@@ -220,6 +220,7 @@ public partial class MainWindow
         OffsetStepper.SetRange(0, _audioData.Duration);
         RefreshTimingPoints();
         ResetUndoHistory();
+        ResetExpandedSegmentToAnchor(); // open on the beat-0 anchor after a fresh load
         SidebarPanel.Visibility = Visibility.Visible;
         OverlayCanvas.Visibility = Visibility.Visible;
         BeatRowCanvas.Visibility = Visibility.Visible;

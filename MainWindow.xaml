@@ -360,7 +360,7 @@
                                  A self-contained dark, narrow scrollbar style is scoped to this
                                  ScrollViewer via its Resources (no key ⇒ overrides the default
                                  ScrollBar style for this subtree only). -->
-                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <ScrollViewer x:Name="SegmentScrollViewer" Grid.Row="2" VerticalScrollBarVisibility="Auto">
                                 <ScrollViewer.Resources>
                                     <Style TargetType="ScrollBar">
                                         <Setter Property="Background" Value="Transparent"/>

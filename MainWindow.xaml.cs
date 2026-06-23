@@ -44,6 +44,10 @@ public partial class MainWindow : Window
     private List<RawTimingPoint> _rawPoints = new() { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
     private IReadOnlyList<TimingPoint> _timingPoints = Array.Empty<TimingPoint>();
 
+    // Currently-expanded segment row (null = all collapsed). Pure view state — not part of
+    // undo snapshots, so Undo/Redo restores data without touching which row is open.
+    private Guid? _expandedSegmentId;
+
     // Overlay canvas elements (dynamically managed)
     private readonly List<UIElement> _overlayElements = new();
     private readonly List<UIElement> _beatRowElements = new();

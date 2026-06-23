@@ -114,6 +114,7 @@ public partial class MainWindow
             _rawPoints = points;
             RefreshTimingPoints();
             ResetUndoHistory();
+            ResetExpandedSegmentToAnchor(); // open on the beat-0 anchor after import
         }
         catch (Exception ex)
         {
