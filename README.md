@@ -2,6 +2,8 @@
 
 A tool for measuring and editing **BPM timing** of audio files, with waveform/spectrogram visualization and a built-in metronome.
 
+> Run into issues, need a hand, want to report bugs, share suggestions, or talk development? Join our QQ group chat **`868888361`**
+
 ## Command-line Arguments
 
 ```
