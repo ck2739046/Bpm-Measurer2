@@ -27,6 +27,10 @@ internal sealed class WaveformTileSet : TileSet
     /// </summary>
     public void Build()
     {
+        // Guard against degenerate audio (Duration<=0 or no columns): avoids Infinity
+        // PixelsPerSecond and a zero-length bitmap.
+        if (_env.Duration <= 0 || _env.Columns <= 0) return;
+
         int totalCols = _env.Columns;
         int fullTiles = (totalCols + TileWidth - 1) / TileWidth;
         double timePerCol = _env.Duration / totalCols;
