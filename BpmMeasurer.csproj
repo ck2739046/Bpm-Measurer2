@@ -27,6 +27,7 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Un4seen.Bass" Version="2.4.18.2" />
+        <PackageReference Include="UndoService" Version="2.3.2" />
         <PackageReference Include="WPFLocalizeExtension" Version="3.10.0" />
         <PackageReference Include="XAMLMarkupExtensions" Version="2.1.3" />
     </ItemGroup>

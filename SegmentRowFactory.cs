@@ -72,7 +72,9 @@ public static class SegmentRowFactory
         stepper.Configure(steps, min, max, decimals, foreColor, readOnly);
         stepper.SetValue(initialValue);
         if (!readOnly)
+        {
             stepper.ValueChanged += (s, v) => onChanged(v);
+        }
         panel.Children.Add(stepper);
 
         Grid.SetColumn(panel, column);

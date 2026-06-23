@@ -213,6 +213,7 @@ public partial class MainWindow
         _rawPoints = new List<RawTimingPoint> { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
         OffsetStepper.SetRange(0, _audioData.Duration);
         RefreshTimingPoints();
+        ResetUndoHistory();
         SidebarPanel.Visibility = Visibility.Visible;
         OverlayCanvas.Visibility = Visibility.Visible;
         BeatRowCanvas.Visibility = Visibility.Visible;

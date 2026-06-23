@@ -8,6 +8,7 @@
         lex:ResxLocalizationProvider.DefaultDictionary="Langs"
         Title="{lex:Loc WindowTitle}" Height="600" Width="900"
         WindowStartupLocation="CenterScreen"
+        Focusable="True"
         Background="#FF0D0D0D"
         Loaded="Window_Loaded"
         Closed="Window_Closed"

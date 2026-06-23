@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,6 +13,9 @@ public partial class StepperInput : UserControl
     private static readonly string[] Palette =
         { "#FF1E3A5F", "#FF2A5090", "#FF3A6AB0" }; // deep, mid, light
 
+    private static int _instanceCounter;
+    private readonly int _instanceId = Interlocked.Increment(ref _instanceCounter);
+    public int InstanceId => _instanceId;
     private readonly TextBox _textBox = new();
     private double[] _steps = { 1 };
     private double _min = double.NegativeInfinity;
@@ -80,7 +84,9 @@ public partial class StepperInput : UserControl
         _textBox.Padding = new Thickness(2, 3, 2, 3);
         _textBox.Height = 24;
         _textBox.IsReadOnly = _readOnly;
+        _textBox.LostKeyboardFocus -= TextBox_Commit;
         _textBox.LostKeyboardFocus += TextBox_Commit;
+        _textBox.KeyDown -= TextBox_KeyDown;
         _textBox.KeyDown += TextBox_KeyDown;
         Grid.SetColumn(_textBox, n);
         RootGrid.Children.Add(_textBox);
@@ -175,7 +181,16 @@ public partial class StepperInput : UserControl
         if (_readOnly) { RefreshText(); return; }
         if (double.TryParse(_textBox.Text, out double v))
         {
-            Value = ClampAndRound(v);
+            var old = Value;
+            var newVal = ClampAndRound(v);
+            // No-change guard: when focus is lost because the element is being
+            // removed from the visual tree (SegmentListPanel.Children.Clear),
+            // committing the same value would fire ValueChanged → UpdateRaw* →
+            // RefreshTimingPoints → DoRefreshUI → RebuildSegmentList → Clear
+            // again, creating an infinite cascade.
+            if (Math.Abs(old - newVal) < 1e-9)
+                return;
+            Value = newVal;
             RefreshText();
             ValueChanged?.Invoke(this, Value);
         }
@@ -190,12 +205,26 @@ public partial class StepperInput : UserControl
         if (e.Key == Key.Enter)
         {
             TextBox_Commit(sender, e);
-            // Return focus to the parent window instead of clearing it. ClearFocus()
-            // leaves FocusedElement == null, which destabilises WPF keyboard routing
-            // and breaks global hotkeys (e.g. Space play/pause) until the user clicks
-            // a focusable element again. The Window is a stable Focusable target.
+            // Defer focus change to after the current dispatched operation
+            // completes (Commit may have triggered RebuildSegmentList via
+            // RefreshTimingPoints→DoRefreshUI). Moving focus inside the same
+            // synchronous stack risks the new FocusedElement also being cleared
+            // by the async rebuild.
             var window = Window.GetWindow(this);
-            if (window != null) Keyboard.Focus(window);
+            if (window != null)
+            {
+                window.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (Keyboard.FocusedElement == null ||
+                        Keyboard.FocusedElement == window)
+                        return; // already safe, or focus was already set
+                    var target = (window as MainWindow)?.OverlayCanvas;
+                    if (target != null && target.IsVisible)
+                        Keyboard.Focus(target);
+                    else
+                        Keyboard.Focus(window);
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
         }
     }
 

@@ -221,7 +221,11 @@ public partial class MainWindow
                     new[] { 1.0 }, 1, point.MaxBeatIndex, 0,
                     Color.FromRgb(0xDD, 0xDD, 0xDD),
                     point.Id, false, point.BeatIndex, 0,
-                    v => UpdateRawBeatIndex(point.Id, v), 0);
+                    v =>
+                    {
+                        UpdateRawBeatIndex(point.Id, v);
+                        RecordTimingIfChanged();
+                    }, 0);
             }
             inputsGrid.Children.Add(beatField);
 
@@ -230,7 +234,11 @@ public partial class MainWindow
                 new[] { 1.0 }, 1, 20, 0,
                 Color.FromRgb(0xFF, 0xFF, 0xFF),
                 point.Id, false, point.BeatsPerBar, 1,
-                v => UpdateRawBeatsPerBar(point.Id, v), 0);
+                v =>
+                {
+                    UpdateRawBeatsPerBar(point.Id, v);
+                    RecordTimingIfChanged();
+                }, 0);
             inputsGrid.Children.Add(bpbPanel);
 
             var bpmPanel = SegmentRowFactory.BuildStepper(
@@ -238,7 +246,11 @@ public partial class MainWindow
                 new[] { 10.0, 1.0, 0.1 }, 10, 1000, 3,
                 Color.FromRgb(0x00, 0xF2, 0xFF),
                 point.Id, false, point.Bpm, 0,
-                v => UpdateRawBpm(point.Id, v), 2);
+                v =>
+                {
+                    UpdateRawBpm(point.Id, v);
+                    RecordTimingIfChanged();
+                }, 2);
             Grid.SetColumnSpan(bpmPanel, 2);
             inputsGrid.Children.Add(bpmPanel);
 
@@ -290,11 +302,15 @@ public partial class MainWindow
         _rawPoints.Add(new RawTimingPoint(Guid.NewGuid(), newBeat, prevBpm, durationMax));
         _rawPoints.Sort((a, b) => a.BeatIndex.CompareTo(b.BeatIndex));
         RefreshTimingPoints();
+        RecordTimingIfChanged();
     }
 
     private void RemoveSegmentBtn_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is Guid id)
+        {
             RemoveRawPoint(id);
+            RecordTimingIfChanged();
+        }
     }
 }

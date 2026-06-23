@@ -236,6 +236,15 @@ public partial class MainWindow
             }
         }
 
+        // Record a single collapsed undo entry for a completed timing drag (offset or
+        // BPM). During the drag neither path calls RecordTimingIfChanged, so _lastRecorded
+        // still holds the pre-drag baseline; comparing the post-drag state against it yields
+        // exactly one entry per gesture (and none for a click-without-movement that changed
+        // nothing). Seek is a view operation, not a timing edit, so it stays unrecorded.
+        var endedDrag = _dragMode;
+        if (endedDrag == DragMode.Offset || endedDrag == DragMode.Bpm)
+            RecordTimingIfChanged();
+
         _dragMode = DragMode.None;
         _focusJustTransferred = false;
         OverlayCanvas.ReleaseMouseCapture();

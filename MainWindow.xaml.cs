@@ -103,14 +103,24 @@ public partial class MainWindow : Window
             }
         };
 
+        // ── InputBindings: Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z via Command system ──
+        InputBindings.Add(new KeyBinding(UndoCommand, Key.Z, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(RedoCommand, Key.Y, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(RedoCommand, Key.Z, ModifierKeys.Control | ModifierKeys.Shift));
+        CommandBindings.Add(new CommandBinding(UndoCommand, UndoCommand_Executed));
+        CommandBindings.Add(new CommandBinding(RedoCommand, RedoCommand_Executed));
+
+        // ── PreviewKeyDown: Space play/pause only ──
         PreviewKeyDown += (s, e) =>
         {
-            if (e.Key != Key.Space) return;
-            // Let text input controls (sidebar StepperInput boxes, etc.) keep Space for typing.
-            if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
-            e.Handled = true;
-            if (_isPlaying) PausePlayback();
-            else StartPlayback();
+            if (e.Key == Key.Space)
+            {
+                if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase)
+                    return;
+                e.Handled = true;
+                if (_isPlaying) PausePlayback();
+                else StartPlayback();
+            }
         };
 
         OffsetStepper.Configure(
@@ -123,6 +133,9 @@ public partial class MainWindow : Window
             if (_isPlaying) PausePlayback();
             _globalOffset = v;
             RefreshTimingPoints();
+            RecordTimingIfChanged();
         };
+
+        InitUndo();
     }
 }

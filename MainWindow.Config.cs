@@ -112,6 +112,7 @@ public partial class MainWindow
             _globalOffset = Math.Round(offset * 1000.0) / 1000.0;
             _rawPoints = points;
             RefreshTimingPoints();
+            ResetUndoHistory();
         }
         catch (Exception ex)
         {
