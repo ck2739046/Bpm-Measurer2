@@ -189,6 +189,7 @@
                 <Canvas x:Name="OverlayCanvas" Grid.RowSpan="3"
                         ClipToBounds="True" Background="Transparent"
                         Visibility="Collapsed"
+                        Panel.ZIndex="60"
                         Focusable="True"
                         KeyboardNavigation.IsTabStop="False"
                         MouseLeftButtonDown="OverlayCanvas_MouseDown"
@@ -215,6 +216,35 @@
                 <Border x:Name="PlotAreaHighlight" Grid.RowSpan="3"
                         BorderBrush="Transparent" BorderThickness="2"
                         IsHitTestVisible="False" Panel.ZIndex="100"/>
+
+                <!-- Left edge gradient shadow: cosine ease-out (perceptually natural fade).
+                     At midpoint the overlay is ~71% opaque, content only ~29% visible. -->
+                <Border Grid.RowSpan="3" HorizontalAlignment="Left" Width="10"
+                        IsHitTestVisible="False" Panel.ZIndex="70">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#FF0A0A0A" Offset="0"/>
+                            <GradientStop Color="#EC0A0A0A" Offset="0.25"/>
+                            <GradientStop Color="#B40A0A0A" Offset="0.5"/>
+                            <GradientStop Color="#620A0A0A" Offset="0.75"/>
+                            <GradientStop Color="#000A0A0A" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+
+                <!-- Right edge gradient shadow: cosine ease-out (mirrored). -->
+                <Border Grid.RowSpan="3" HorizontalAlignment="Right" Width="10"
+                        IsHitTestVisible="False" Panel.ZIndex="70">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#000A0A0A" Offset="0"/>
+                            <GradientStop Color="#620A0A0A" Offset="0.25"/>
+                            <GradientStop Color="#B40A0A0A" Offset="0.5"/>
+                            <GradientStop Color="#EC0A0A0A" Offset="0.75"/>
+                            <GradientStop Color="#FF0A0A0A" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
             </Grid>
 
             <!-- Column 1: Right Sidebar Panel -->
