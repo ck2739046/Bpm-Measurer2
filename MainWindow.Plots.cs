@@ -21,26 +21,26 @@ public partial class MainWindow
 
         if (!_plotsConfigured)
         {
+            // Initial X range first
+            SetBothXLimits(0, _audioData.Duration);
             _plotsConfigured = true;
 
-            // Generate WriteableBitmap once
-            _waveBitmap = WaveformBitmapRenderer.Create(_waveEnvelope);
-            WaveformImage.Source = _waveBitmap;
+            // Build waveform tiles (one WriteableBitmap per TileWidth columns) and add their
+            // Images to the canvas. Keeps every GPU texture within hardware limits, avoiding
+            // the MIL internal tiling that crashed the render thread on large single bitmaps.
+            _waveTileSet = new WaveformTileSet(_waveEnvelope, WaveformCanvas);
+            _waveTileSet.Build();
 
             WaveformCanvas.Visibility = Visibility.Visible;
             WaveformCanvas.UpdateLayout();
-
-            // Initial X range (sets _viewHalfWidth)
-            SetBothXLimits(0, _audioData.Duration);
         }
 
         if (!_specConfigured)
         {
             _specConfigured = true;
 
-            // Generate WriteableBitmap once
-            _specBitmap = SpectrogramBitmapRenderer.Create(_specCache);
-            SpectrogramImage.Source = _specBitmap;
+            _specTileSet = new SpectrogramTileSet(_specCache, SpectrogramCanvas);
+            _specTileSet.Build();
 
             SpectrogramCanvas.Visibility = Visibility.Visible;
             SpectrogramCanvas.UpdateLayout();
@@ -63,65 +63,23 @@ public partial class MainWindow
 
     private void UpdateWaveformTransform()
     {
-        if (_waveEnvelope == null) return;
+        if (_waveTileSet == null) return;
         double canvasW = WaveformCanvas.ActualWidth;
+        double canvasH = WaveformCanvas.ActualHeight;
         if (canvasW <= 0) return;
 
-        // pixelsPerSec = data columns per second of audio
-        double pixelsPerSec = _waveEnvelope.Columns / _waveEnvelope.Duration;
-
-        // Scale: fit (2 * viewHalfWidth) seconds into canvas width
-        double scaleX = canvasW / (2.0 * _viewHalfWidth * pixelsPerSec);
-        double canvasH = WaveformCanvas.ActualHeight;
-
-        // Translate: left-align the view to (_viewCenterTime - viewHalfWidth) seconds
-        double translateX = -(_viewCenterTime - _viewHalfWidth) * pixelsPerSec * scaleX;
-
-        // 异常值检测：NaN/Infinity 或极端 scale 会导致 WPF 渲染层崩溃
-        if (double.IsNaN(scaleX) || double.IsInfinity(scaleX) ||
-            double.IsNaN(translateX) || double.IsInfinity(translateX) ||
-            Math.Abs(scaleX) > 1e7 || Math.Abs(translateX) > 1e9)
-        {
-            DebugLog.Log(
-                $"WAVEFORM BAD TRANSFORM: scaleX={scaleX} translateX={translateX} " +
-                $"viewHalfWidth={_viewHalfWidth} viewCenterTime={_viewCenterTime} " +
-                $"canvasW={canvasW} pixelsPerSec={pixelsPerSec} duration={_waveEnvelope.Duration}");
-        }
-
-        WaveScale.ScaleX = scaleX;
-        WaveScale.ScaleY = canvasH > 0 ? canvasH / WaveformBitmapRenderer.BitmapHeight : 1.0;
-        WaveTranslate.X = translateX;
-        WaveTranslate.Y = 0;
+        // NaN/Infinity/extreme-scale guards live inside TileSet.UpdateTransform, which
+        // skips pushing bad matrices to the render thread (the original crash vector).
+        _waveTileSet.UpdateTransform(_viewCenterTime, _viewHalfWidth, canvasW, canvasH);
     }
 
     private void UpdateSpectrogramTransform()
     {
-        if (_specCache == null) return;
+        if (_specTileSet == null) return;
         double canvasW = SpectrogramCanvas.ActualWidth;
+        double canvasH = SpectrogramCanvas.ActualHeight;
         if (canvasW <= 0) return;
 
-        // pixelsPerSec = data columns per second of audio
-        double pixelsPerSec = _specCache.Columns / _specCache.Duration;
-
-        // Scale: fit (2 * viewHalfWidth) seconds into canvas width
-        double scaleX = canvasW / (2.0 * _viewHalfWidth * pixelsPerSec);
-        double canvasH = SpectrogramCanvas.ActualHeight;
-
-        // Translate: left-align the view to (_viewCenterTime - viewHalfWidth) seconds
-        double translateX = -(_viewCenterTime - _viewHalfWidth) * pixelsPerSec * scaleX;
-
-        if (double.IsNaN(scaleX) || double.IsInfinity(scaleX) ||
-            double.IsNaN(translateX) || double.IsInfinity(translateX) ||
-            Math.Abs(scaleX) > 1e7 || Math.Abs(translateX) > 1e9)
-        {
-            DebugLog.Log(
-                $"SPECTROGRAM BAD TRANSFORM: scaleX={scaleX} translateX={translateX} " +
-                $"viewHalfWidth={_viewHalfWidth} viewCenterTime={_viewCenterTime}");
-        }
-
-        SpecScale.ScaleX = scaleX;
-        SpecScale.ScaleY = canvasH > 0 ? canvasH / _specCache.FreqBands : 1.0;
-        SpecTranslate.X = translateX;
-        SpecTranslate.Y = 0;
+        _specTileSet.UpdateTransform(_viewCenterTime, _viewHalfWidth, canvasW, canvasH);
     }
 }

@@ -37,6 +37,8 @@ public partial class MainWindow
         CompositionTarget.Rendering -= OnRenderingFrame;
         FreeMetronomeClicks();
         StopAndFreeStreams();
+        _waveTileSet?.Dispose();
+        _specTileSet?.Dispose();
         Bass.BASS_Free();
     }
 
@@ -183,8 +185,12 @@ public partial class MainWindow
         _viewCenterTime = 0;
         _plotsConfigured = false;
         _specConfigured = false;
-        _waveBitmap = null;
-        _specBitmap = null;
+        // Tear down old tiles (removes their Images from the canvases and drops the
+        // WriteableBitmaps) before building fresh ones in EnsurePlotsConfigured.
+        _waveTileSet?.Dispose();
+        _waveTileSet = null;
+        _specTileSet?.Dispose();
+        _specTileSet = null;
 
         FileNameText.Text = System.IO.Path.GetFileName(filePath);
         SampleRateText.Text = $"{_audioData.SampleRate} Hz";

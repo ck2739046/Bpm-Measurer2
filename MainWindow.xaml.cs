@@ -27,8 +27,8 @@ public partial class MainWindow : Window
     private WaveformEnvelope? _waveEnvelope;
     private SpectrogramData? _specCache;
 
-    // Spectrogram WriteableBitmap (filled once, GPU-composited thereafter)
-    private WriteableBitmap? _specBitmap;
+    // Spectrogram tile set (built once on load, GPU-composited thereafter)
+    private SpectrogramTileSet? _specTileSet;
 
     // Viewport
     private double _viewCenterTime;
@@ -36,8 +36,8 @@ public partial class MainWindow : Window
     private bool _plotsConfigured;
     private bool _specConfigured;
 
-    // Waveform WriteableBitmap (filled once, GPU-composited thereafter)
-    private WriteableBitmap? _waveBitmap;
+    // Waveform tile set (built once on load, GPU-composited thereafter)
+    private WaveformTileSet? _waveTileSet;
 
     // Timing state
     private double _globalOffset = 0.0;

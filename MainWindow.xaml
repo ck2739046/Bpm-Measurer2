@@ -164,42 +164,23 @@
                     <RowDefinition Height="0.5*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Waveform: Canvas + WriteableBitmap (GPU composited, zero CPU per-frame) -->
+                <!-- Waveform: Canvas container; tile Images (one per WriteableBitmap ≤2048px wide)
+                     are added dynamically by WaveformTileSet to stay within GPU texture limits. -->
                 <Canvas x:Name="WaveformCanvas" Grid.Row="0"
                         ClipToBounds="True" Background="#FF0A0A0A"
                         Visibility="Collapsed"
-                        SizeChanged="WaveformCanvas_SizeChanged">
-                    <Image x:Name="WaveformImage" Stretch="None"
-                           RenderOptions.BitmapScalingMode="HighQuality">
-                        <Image.RenderTransform>
-                            <TransformGroup>
-                                <ScaleTransform x:Name="WaveScale" />
-                                <TranslateTransform x:Name="WaveTranslate" />
-                            </TransformGroup>
-                        </Image.RenderTransform>
-                    </Image>
-                </Canvas>
+                        SizeChanged="WaveformCanvas_SizeChanged" />
 
                 <!-- Beat Row: narrow strip between waveform and spectrogram for beat numbers and drag -->
                 <Canvas x:Name="BeatRowCanvas" Grid.Row="1"
                         ClipToBounds="True" Background="#FF2A2A2A"
                         Visibility="Collapsed"/>
 
-                <!-- Spectrogram: Canvas + WriteableBitmap (GPU composited, zero CPU per-frame) -->
+                <!-- Spectrogram: Canvas container; tile Images added dynamically by SpectrogramTileSet. -->
                 <Canvas x:Name="SpectrogramCanvas" Grid.Row="2"
                         ClipToBounds="True" Background="#FF0A0A0A"
                         Visibility="Collapsed"
-                        SizeChanged="SpectrogramCanvas_SizeChanged">
-                    <Image x:Name="SpectrogramImage" Stretch="None"
-                           RenderOptions.BitmapScalingMode="HighQuality">
-                        <Image.RenderTransform>
-                            <TransformGroup>
-                                <ScaleTransform x:Name="SpecScale" />
-                                <TranslateTransform x:Name="SpecTranslate" />
-                            </TransformGroup>
-                        </Image.RenderTransform>
-                    </Image>
-                </Canvas>
+                        SizeChanged="SpectrogramCanvas_SizeChanged" />
 
                 <!-- Overlay: beat grid lines + playhead, captures mouse input.
                      Focusable so drag/release leaves keyboard focus on a valid target,

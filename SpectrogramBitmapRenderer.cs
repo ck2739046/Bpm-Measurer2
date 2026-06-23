@@ -13,8 +13,26 @@ namespace BpmMeasurer;
 public static class SpectrogramBitmapRenderer
 {
     public static WriteableBitmap Create(SpectrogramData data)
+        => CreateTile(data, 0, data.Columns, ComputeGlobalRange(data.Magnitudes));
+
+    /// <summary>
+    /// Parallel chunked min/max over raw magnitudes. Local per-thread reduction
+    /// followed by a sequential global merge (O(threads), negligible). Public so
+    /// tile-based callers can compute the global range once and pass it to every
+    /// <see cref="CreateTile"/> call, keeping brightness consistent across tiles.
+    /// </summary>
+    public static Range ComputeGlobalRange(float[,] mags)
+        => ComputeRangeParallel(mags);
+
+    /// <summary>
+    /// Renders a horizontal slice of the spectrogram (columns
+    /// [colStart, colStart+colCount)) into a WriteableBitmap of width
+    /// <paramref name="colCount"/>. The caller-supplied <paramref name="globalRange"/>
+    /// ensures consistent brightness across tiles.
+    /// </summary>
+    public static WriteableBitmap CreateTile(SpectrogramData data, int colStart, int colCount, Range globalRange)
     {
-        int w = data.Columns;
+        int w = colCount;
         int h = data.FreqBands;
         var bmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
 
@@ -25,9 +43,8 @@ public static class SpectrogramBitmapRenderer
         const double yExp = 1.8;
         int maxSrcIndex = h - 1;
 
-        // ── Phase 1: parallel min/max over raw magnitudes (cheap comparison, no Y remap) ──
         var mags = data.Magnitudes;
-        var range = ComputeRangeParallel(mags);
+        var range = globalRange;
 
         // ── Phase 2: parallel pixel fill using the computed range ──
         var pixels = new int[w * h];
@@ -43,8 +60,9 @@ public static class SpectrogramBitmapRenderer
             int rowOffset = y * w;
             for (int x = 0; x < w; x++)
             {
-                float mag = mags[srcLo, x] * oneMinusFrac
-                          + mags[srcHi, x] * frac;
+                int srcCol = colStart + x;
+                float mag = mags[srcLo, srcCol] * oneMinusFrac
+                          + mags[srcHi, srcCol] * frac;
                 double fraction = range.Normalize(mag, true);
                 pixels[rowOffset + x] = lut[(int)(fraction * 255)];
             }
@@ -69,7 +87,7 @@ public static class SpectrogramBitmapRenderer
     /// Parallel chunked min/max over raw magnitudes. Local per-thread reduction
     /// followed by a sequential global merge (O(threads), negligible).
     /// </summary>
-    internal static Range ComputeRangeParallel(float[,] mags)
+    private static Range ComputeRangeParallel(float[,] mags)
     {
         int h = mags.GetLength(0);
         int w = mags.GetLength(1);
