@@ -356,8 +356,78 @@
                                 </Button>
                             </Grid>
 
-                            <!-- Scrollable segment list (built dynamically) -->
-                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden">
+                            <!-- Scrollable segment list (built dynamically).
+                                 A self-contained dark, narrow scrollbar style is scoped to this
+                                 ScrollViewer via its Resources (no key ⇒ overrides the default
+                                 ScrollBar style for this subtree only). -->
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                                <ScrollViewer.Resources>
+                                    <Style TargetType="ScrollBar">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Width" Value="5"/>
+                                        <Setter Property="MinWidth" Value="5"/>
+                                        <Setter Property="Margin" Value="2,0,0,0"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ScrollBar">
+                                                    <Border Background="Transparent">
+                                                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                                            <Track.DecreaseRepeatButton>
+                                                                <RepeatButton Command="ScrollBar.PageUpCommand">
+                                                                    <RepeatButton.Template>
+                                                                        <ControlTemplate TargetType="RepeatButton">
+                                                                            <Border Background="Transparent"/>
+                                                                        </ControlTemplate>
+                                                                    </RepeatButton.Template>
+                                                                </RepeatButton>
+                                                            </Track.DecreaseRepeatButton>
+                                                            <Track.Thumb>
+                                                                <Thumb>
+                                                                    <Thumb.Template>
+                                                                        <ControlTemplate TargetType="Thumb">
+                                                                            <Border x:Name="ThumbFill"
+                                                                                    Background="#3A3A3A"
+                                                                                    CornerRadius="3"
+                                                                                    Margin="0,1"/>
+                                                                            <ControlTemplate.Triggers>
+                                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                                    <Setter TargetName="ThumbFill" Property="Background" Value="#4A4A4A"/>
+                                                                                </Trigger>
+                                                                                <Trigger Property="IsDragging" Value="True">
+                                                                                    <Setter TargetName="ThumbFill" Property="Background" Value="#FF818CF8"/>
+                                                                                </Trigger>
+                                                                            </ControlTemplate.Triggers>
+                                                                        </ControlTemplate>
+                                                                    </Thumb.Template>
+                                                                </Thumb>
+                                                            </Track.Thumb>
+                                                            <Track.IncreaseRepeatButton>
+                                                                <RepeatButton Command="ScrollBar.PageDownCommand">
+                                                                    <RepeatButton.Template>
+                                                                        <ControlTemplate TargetType="RepeatButton">
+                                                                            <Border Background="Transparent"/>
+                                                                        </ControlTemplate>
+                                                                    </RepeatButton.Template>
+                                                                </RepeatButton>
+                                                            </Track.IncreaseRepeatButton>
+                                                        </Track>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <!-- Vertical: track already laid out by the ScrollBar's
+                                                             default orientation handling. Horizontal isn't used
+                                                             here (HorizontalScrollBarVisibility stays hidden). -->
+                                                        <Trigger Property="Orientation" Value="Horizontal">
+                                                            <Setter Property="Width" Value="Auto"/>
+                                                            <Setter Property="Height" Value="5"/>
+                                                            <Setter Property="MinWidth" Value="0"/>
+                                                            <Setter Property="MinHeight" Value="5"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ScrollViewer.Resources>
                                 <StackPanel x:Name="SegmentListPanel"/>
                             </ScrollViewer>
                         </Grid>
