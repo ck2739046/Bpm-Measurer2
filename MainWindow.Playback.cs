@@ -10,7 +10,7 @@ namespace BpmMeasurer;
 /// <summary>
 /// Audio playback (BASS) lifecycle, file loading, and the composition-frame
 /// render driver. Extracted from MainWindow as a partial — shares all private
-/// instance fields with MainWindow.xaml.cs; logic is unchanged.
+/// instance fields with MainWindow.xaml.cs.
 /// </summary>
 public partial class MainWindow
 {

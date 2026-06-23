@@ -5,7 +5,7 @@ namespace BpmMeasurer;
 
 /// <summary>
 /// OverlayCanvas pointer interaction: beat-drag (offset / BPM), click-to-seek, pan,
-/// and mouse-wheel zoom / pan. Extracted from MainWindow as a partial — logic unchanged.
+/// and mouse-wheel zoom / pan. Extracted from MainWindow as a partial.
 /// </summary>
 public partial class MainWindow
 {

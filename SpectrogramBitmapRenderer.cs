@@ -8,7 +8,7 @@ namespace BpmMeasurer;
 /// <summary>
 /// Converts a <see cref="SpectrogramData"/> to a <see cref="WriteableBitmap"/>.
 /// Uses <see cref="WaveSpectrogramColormap"/> and <see cref="Range.Normalize"/>
-/// exactly as ScottPlot's Heatmap does, guaranteeing pixel-level color identity.
+/// to map normalized magnitude to color.
 /// </summary>
 public static class SpectrogramBitmapRenderer
 {
@@ -20,8 +20,8 @@ public static class SpectrogramBitmapRenderer
 
         var lut = WaveSpectrogramColormap.Lut;
 
-        // Y-axis exponential remap (merged with Y-flip) — eliminates the ~60MB resampled array
-        // that was previously allocated in PrecomputedAudioData.ComputeSpectrogram.
+        // Y-axis exponential remap (merged with Y-flip into the pixel fill loop),
+        // avoiding a separate resampled array.
         const double yExp = 1.8;
         int maxSrcIndex = h - 1;
 
@@ -68,7 +68,6 @@ public static class SpectrogramBitmapRenderer
     /// <summary>
     /// Parallel chunked min/max over raw magnitudes. Local per-thread reduction
     /// followed by a sequential global merge (O(threads), negligible).
-    /// Replaces the original single-threaded O(h·w) scan.
     /// </summary>
     internal static Range ComputeRangeParallel(float[,] mags)
     {

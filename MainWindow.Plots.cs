@@ -3,8 +3,8 @@ using System.Windows;
 namespace BpmMeasurer;
 
 /// <summary>
-/// ScottPlot/canvas configuration and the per-frame wave/spectrogram transforms
-/// (scale + translate). Extracted from MainWindow as a partial — logic unchanged.
+/// Canvas/bitmap configuration and the per-frame wave/spectrogram transforms
+/// (scale + translate). Extracted from MainWindow as a partial.
 /// Bitmaps are generated once in EnsurePlotsConfigured; thereafter only the
 /// transform is updated each frame for GPU compositing.
 /// </summary>

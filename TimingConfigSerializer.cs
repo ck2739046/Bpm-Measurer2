@@ -8,7 +8,7 @@ public static class TimingConfigSerializer
 {
     /// <summary>
     /// Builds the config text. Illegal segments (non-anchor segments whose start time
-    /// exceeds the audio duration) are skipped, matching the original export behavior.
+    /// exceeds the audio duration) are skipped on export.
     /// </summary>
     public static string Serialize(double offset, IReadOnlyList<TimingPoint> points, double duration)
     {

@@ -8,8 +8,8 @@ namespace BpmMeasurer;
 
 /// <summary>
 /// Localization lookup, startup localized-text application, and the timing-config
-/// Import / Export button handlers. Extracted from MainWindow as a partial — logic
-/// unchanged. Pure parse/serialize logic lives in <see cref="TimingConfigParser"/> /
+/// Import / Export button handlers. Extracted from MainWindow as a partial.
+/// Pure parse/serialize logic lives in <see cref="TimingConfigParser"/> /
 /// <see cref="TimingConfigSerializer"/>.
 /// </summary>
 public partial class MainWindow
@@ -40,7 +40,8 @@ public partial class MainWindow
 
     // ── Import / Export config (plain-text format) ──
     // Line 1: global_offset = <seconds>
-    // Line 2+: beat_index = <int>, bpm = <float>
+    // Line 2+: beat_index = <int>, bpm = <float>, beats_per_bar = <int>
+    //         (beats_per_bar is optional on import; defaults to 4, clamped 1–20)
 
     private void ExportConfigBtn_Click(object sender, RoutedEventArgs e)
     {

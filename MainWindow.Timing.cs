@@ -8,7 +8,7 @@ namespace BpmMeasurer;
 /// <summary>
 /// Timing-point CRUD (raw points ↔ computed timing points), the sidebar segment-list
 /// rebuild, and the add/remove-segment button handlers. Extracted from MainWindow as a
-/// partial — logic unchanged. Segment row UI is built via <see cref="SegmentRowFactory"/>.
+/// partial. Segment row UI is built via <see cref="SegmentRowFactory"/>.
 /// </summary>
 public partial class MainWindow
 {
