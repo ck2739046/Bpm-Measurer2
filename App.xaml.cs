@@ -31,7 +31,7 @@ public partial class App : Application
     public App()
     {
         // ── 全局崩溃日志 ──
-        // 捕获所有未处理异常，写入 exe 所在目录的 crash_*.txt。
+        // 捕获所有未处理异常，写入 exe 所在目录下 logs/ 子目录的 crash_*.txt。
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
             if (e.ExceptionObject is Exception ex)

@@ -7,11 +7,18 @@ namespace BpmMeasurer;
 /// <summary>
 /// 调试日志工具：正常运行时不产生任何文件。
 /// 所有日志先写入内存缓冲区；仅当崩溃（LogCrash）时才将缓冲区 + 异常详情
-/// 一次性写入 exe 所在目录的 crash_*.txt。
+/// 一次性写入 exe 所在目录下 logs/ 子目录的 crash_*.txt。
 /// </summary>
 public static class DebugLog
 {
-    private static readonly string LogDir = AppDomain.CurrentDomain.BaseDirectory;
+    private static readonly string LogDir = GetLogDirectory();
+
+    private static string GetLogDirectory()
+    {
+        string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+        try { Directory.CreateDirectory(dir); } catch { return AppDomain.CurrentDomain.BaseDirectory; }
+        return dir;
+    }
     private static readonly object Lock = new();
     private static readonly List<string> Buffer = new();
     private const int MaxBufferLines = 2000;
@@ -106,6 +113,7 @@ public static class DebugLog
         // ── 3. 落盘（写入失败时回退到 Debug.WriteLine） ──
         try
         {
+            Directory.CreateDirectory(LogDir);
             File.WriteAllText(fullPath, string.Join(Environment.NewLine, lines));
         }
         catch (Exception writeEx)
