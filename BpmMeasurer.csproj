@@ -35,6 +35,11 @@
         <Compile Remove="test\**\*.cs" />
     </ItemGroup>
     <ItemGroup>
+        <!-- Embed the multi-size icon as a WPF Resource so it can be loaded into
+             an Image via pack://application:,,,/icon/icon.ico (e.g. the About panel). -->
+        <Resource Include="icon\icon.ico" />
+    </ItemGroup>
+    <ItemGroup>
         <ContentWithTargetPath Include="bass.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>bass.dll</TargetPath>

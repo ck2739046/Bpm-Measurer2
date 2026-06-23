@@ -47,18 +47,36 @@
   <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index not in ascending order (segment {0})</value></data>
   <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>The first bpm segment must have beat_index = 0</value></data>
   <data name="OperationHelp_Btn" xml:space="preserve"><value>Help</value></data>
-  <data name="HelpDlg_Title" xml:space="preserve"><value>Operation Help</value></data>
+  <data name="HelpDlg_Title" xml:space="preserve"><value>Help</value></data>
   <data name="HelpDlg_Close" xml:space="preserve"><value>Close</value></data>
-  <data name="Help_Op1" xml:space="preserve"><value>Drag waveform / spectrogram area</value></data>
-  <data name="Help_Desc1" xml:space="preserve"><value>Adjust audio playback position</value></data>
+  <data name="Nav_Help" xml:space="preserve"><value>Help</value></data>
+  <data name="Nav_About" xml:space="preserve"><value>About</value></data>
+  <data name="Help_Group1" xml:space="preserve"><value>Waveform / Spectrogram View</value></data>
+  <data name="Help_Group2" xml:space="preserve"><value>Beat Ruler</value></data>
+  <data name="Help_Group3" xml:space="preserve"><value>Global Shortcuts</value></data>
+  <data name="Help_Op1" xml:space="preserve"><value>Drag the view</value></data>
+  <data name="Help_Desc1" xml:space="preserve"><value>Seek playback position</value></data>
   <data name="Help_Op2" xml:space="preserve"><value>Scroll wheel</value></data>
-  <data name="Help_Desc2" xml:space="preserve"><value>Adjust audio playback position</value></data>
-  <data name="Help_Op3" xml:space="preserve"><value>Drag blank area of the middle beat ruler</value></data>
-  <data name="Help_Desc3" xml:space="preserve"><value>Adjust the global offset</value></data>
-  <data name="Help_Op4" xml:space="preserve"><value>Drag a triangle marker in the middle beat ruler</value></data>
-  <data name="Help_Desc4" xml:space="preserve"><value>Adjust the BPM of the current tempo section</value></data>
-  <data name="Help_Op5" xml:space="preserve"><value>Ctrl + Scroll wheel</value></data>
-  <data name="Help_Desc5" xml:space="preserve"><value>Zoom the timeline view</value></data>
-  <data name="Help_Op6" xml:space="preserve"><value>Space key</value></data>
+  <data name="Help_Desc2" xml:space="preserve"><value>Seek playback position (same)</value></data>
+  <data name="Help_Op3" xml:space="preserve"><value>Ctrl + Scroll wheel</value></data>
+  <data name="Help_Desc3" xml:space="preserve"><value>Zoom the timeline</value></data>
+  <data name="Help_Op4" xml:space="preserve"><value>Drag the ruler blank area</value></data>
+  <data name="Help_Desc4" xml:space="preserve"><value>Adjust the global offset</value></data>
+  <data name="Help_Op5" xml:space="preserve"><value>Drag the BPM triangle marker</value></data>
+  <data name="Help_Desc5" xml:space="preserve"><value>Adjust the BPM of the current segment</value></data>
+  <data name="Help_Op6" xml:space="preserve"><value>Space</value></data>
   <data name="Help_Desc6" xml:space="preserve"><value>Play / Pause</value></data>
+  <data name="Help_Op7" xml:space="preserve"><value>Ctrl + Z</value></data>
+  <data name="Help_Desc7" xml:space="preserve"><value>Undo operation</value></data>
+  <data name="Help_Op8" xml:space="preserve"><value>Ctrl + Y</value></data>
+  <data name="Help_Desc8" xml:space="preserve"><value>Redo operation</value></data>
+  <data name="Help_Op9" xml:space="preserve"><value>Shift + Ctrl + Z</value></data>
+  <data name="Help_Desc9" xml:space="preserve"><value>Redo operation (same)</value></data>
+  <data name="About_AppName" xml:space="preserve"><value>BPM Measurer</value></data>
+  <data name="About_Tagline" xml:space="preserve"><value>Visual audio BPM measuring tool</value></data>
+  <data name="About_Version" xml:space="preserve"><value>Version</value></data>
+  <data name="About_Author" xml:space="preserve"><value>Author</value></data>
+  <data name="About_Repo" xml:space="preserve"><value>Repository</value></data>
+  <data name="About_BuildTime" xml:space="preserve"><value>Build time</value></data>
+  <data name="About_OpenRepo_Tooltip" xml:space="preserve"><value>Open in browser</value></data>
 </root>

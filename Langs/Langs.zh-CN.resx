@@ -47,18 +47,36 @@
   <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index 未从小到大排列（第 {0} 段）</value></data>
   <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>第一个 bpm 段的 beat_index 必须是 0</value></data>
   <data name="OperationHelp_Btn" xml:space="preserve"><value>帮助</value></data>
-  <data name="HelpDlg_Title" xml:space="preserve"><value>操作帮助</value></data>
+  <data name="HelpDlg_Title" xml:space="preserve"><value>帮助</value></data>
   <data name="HelpDlg_Close" xml:space="preserve"><value>关闭</value></data>
-  <data name="Help_Op1" xml:space="preserve"><value>鼠标拖动音频波形区 / 频谱区</value></data>
-  <data name="Help_Desc1" xml:space="preserve"><value>调整音频播放进度</value></data>
+  <data name="Nav_Help" xml:space="preserve"><value>操作帮助</value></data>
+  <data name="Nav_About" xml:space="preserve"><value>关于</value></data>
+  <data name="Help_Group1" xml:space="preserve"><value>波形 / 频谱视图</value></data>
+  <data name="Help_Group2" xml:space="preserve"><value>节拍标尺区</value></data>
+  <data name="Help_Group3" xml:space="preserve"><value>全局快捷键</value></data>
+  <data name="Help_Op1" xml:space="preserve"><value>鼠标拖拽视图</value></data>
+  <data name="Help_Desc1" xml:space="preserve"><value>定位播放进度</value></data>
   <data name="Help_Op2" xml:space="preserve"><value>鼠标滚轮</value></data>
-  <data name="Help_Desc2" xml:space="preserve"><value>调整音频播放进度</value></data>
-  <data name="Help_Op3" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的空白区域</value></data>
-  <data name="Help_Desc3" xml:space="preserve"><value>调整全局起始偏移（Global Offset）</value></data>
-  <data name="Help_Op4" xml:space="preserve"><value>鼠标拖动中间节拍标尺区的三角形标记</value></data>
-  <data name="Help_Desc4" xml:space="preserve"><value>调整当前变速段的 BPM 值</value></data>
-  <data name="Help_Op5" xml:space="preserve"><value>Ctrl + 鼠标滚轮</value></data>
-  <data name="Help_Desc5" xml:space="preserve"><value>缩放时间轴视图</value></data>
+  <data name="Help_Desc2" xml:space="preserve"><value>定位播放进度 (同上)</value></data>
+  <data name="Help_Op3" xml:space="preserve"><value>Ctrl + 鼠标滚轮</value></data>
+  <data name="Help_Desc3" xml:space="preserve"><value>缩放时间轴</value></data>
+  <data name="Help_Op4" xml:space="preserve"><value>鼠标拖拽标尺空白处</value></data>
+  <data name="Help_Desc4" xml:space="preserve"><value>调整全局偏移 (Offset)</value></data>
+  <data name="Help_Op5" xml:space="preserve"><value>鼠标拖拽 BPM 三角形标记</value></data>
+  <data name="Help_Desc5" xml:space="preserve"><value>调整当前段的 BPM</value></data>
   <data name="Help_Op6" xml:space="preserve"><value>空格键</value></data>
   <data name="Help_Desc6" xml:space="preserve"><value>播放 / 暂停</value></data>
+  <data name="Help_Op7" xml:space="preserve"><value>Ctrl + Z</value></data>
+  <data name="Help_Desc7" xml:space="preserve"><value>撤销操作</value></data>
+  <data name="Help_Op8" xml:space="preserve"><value>Ctrl + Y</value></data>
+  <data name="Help_Desc8" xml:space="preserve"><value>重做操作</value></data>
+  <data name="Help_Op9" xml:space="preserve"><value>Shift + Ctrl + Z</value></data>
+  <data name="Help_Desc9" xml:space="preserve"><value>重做操作 (同上)</value></data>
+  <data name="About_AppName" xml:space="preserve"><value>BPM Measurer</value></data>
+  <data name="About_Tagline" xml:space="preserve"><value>可视化音频 BPM 测速工具</value></data>
+  <data name="About_Version" xml:space="preserve"><value>版本</value></data>
+  <data name="About_Author" xml:space="preserve"><value>作者</value></data>
+  <data name="About_Repo" xml:space="preserve"><value>仓库</value></data>
+  <data name="About_BuildTime" xml:space="preserve"><value>构建时间</value></data>
+  <data name="About_OpenRepo_Tooltip" xml:space="preserve"><value>在浏览器中打开</value></data>
 </root>

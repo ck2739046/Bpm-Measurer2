@@ -6,15 +6,15 @@
         lex:ResxLocalizationProvider.DefaultAssembly="Bpm Measurer"
         lex:ResxLocalizationProvider.DefaultDictionary="Langs"
         Title="{lex:Loc HelpDlg_Title}"
-        ResizeMode="NoResize"
-        SizeToContent="WidthAndHeight"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         Background="#FF0D0D0D"
-        MinWidth="420">
+        Width="680" Height="500"
+        MinWidth="560" MinHeight="420">
     <Window.Resources>
         <Style TargetType="Button" x:Key="CloseButtonStyle">
-            <Setter Property="MinWidth" Value="80"/>
+            <Setter Property="MinWidth" Value="90"/>
             <Setter Property="Height" Value="32"/>
             <Setter Property="Background" Value="#FF4F46E5"/>
             <Setter Property="Foreground" Value="White"/>
@@ -32,50 +32,164 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Top nav button (toggle look; active state set in code-behind) -->
+        <Style TargetType="Button" x:Key="NavButtonStyle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFCCCCCC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FF262626"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
-    <Grid Margin="24,20">
+
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="16"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Help rows -->
-        <ItemsControl Grid.Row="0" x:Name="HelpItemsControl">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Padding="0,8" BorderBrush="#FF2A2A2A" BorderThickness="0,0,0,1">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0"
-                                       Text="{Binding Operation}"
-                                       Foreground="#FF818CF8"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,16,0"
-                                       TextWrapping="Wrap"/>
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding Description}"
-                                       Foreground="#FFCCCCCC"
-                                       FontSize="13"
-                                       VerticalAlignment="Center"
-                                       TextWrapping="Wrap"/>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <!-- Top navbar -->
+        <Border Grid.Row="0" Background="#FF1A1A1A" Padding="16,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-        <!-- Close button -->
-        <Border Grid.Row="2" Margin="0,16,0,0">
-            <Button Style="{StaticResource CloseButtonStyle}"
-                    HorizontalAlignment="Center"
-                    Click="CloseBtn_Click"
-                    Content="{lex:Loc HelpDlg_Close}"/>
+                <!-- App name -->
+                <TextBlock Grid.Column="0" Text="{lex:Loc About_AppName}" Foreground="White"
+                           FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+
+                <!-- Nav buttons (centered, equal-width) -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button x:Name="NavHelpBtn" Style="{StaticResource NavButtonStyle}" MinWidth="100"
+                            Content="{lex:Loc Nav_Help}" Click="NavHelpBtn_Click"/>
+                    <Button x:Name="NavAboutBtn" Style="{StaticResource NavButtonStyle}" MinWidth="100"
+                            Content="{lex:Loc Nav_About}" Click="NavAboutBtn_Click"/>
+                </StackPanel>
+
+                <!-- Spacer for symmetry -->
+                <Border Grid.Column="2" Width="40"/>
+            </Grid>
         </Border>
+
+        <!-- Content area -->
+        <!-- Help panel -->
+        <ScrollViewer Grid.Row="1" x:Name="HelpPanel" VerticalScrollBarVisibility="Hidden">
+            <ItemsControl x:Name="HelpGroupsControl" Margin="24,12,24,4">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="{Binding Title}" Foreground="#FF818CF8"
+                                       FontSize="13" FontWeight="Bold" Margin="0,0,0,6"
+                                       TextWrapping="Wrap"/>
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="0,6" BorderBrush="#FF2A2A2A" BorderThickness="0,0,0,1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Operation}"
+                                                           Foreground="#FFB5B5E0"
+                                                           FontFamily="Consolas"
+                                                           FontSize="12.5"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,14,0"
+                                                           TextWrapping="Wrap"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Description}"
+                                                           Foreground="#FFCCCCCC"
+                                                           FontSize="13"
+                                                           VerticalAlignment="Center"
+                                                           TextWrapping="Wrap"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- About panel -->
+        <ScrollViewer Grid.Row="1" x:Name="AboutPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center" Margin="24,28,24,16" MaxWidth="380">
+                <Image Source="/icon/icon.ico" Width="96" Height="96" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                <TextBlock Text="{lex:Loc About_AppName}" Foreground="White"
+                           FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center"/>
+                <TextBlock Text="{lex:Loc About_Tagline}" Foreground="#FF888888"
+                           FontSize="12" Margin="0,4,0,22" HorizontalAlignment="Center"
+                           TextAlignment="Center" TextWrapping="Wrap"/>
+
+                <Grid Margin="0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{lex:Loc About_Version}" Foreground="#FF666666" FontSize="12"/>
+                    <TextBlock Grid.Column="1" x:Name="AboutVersionValue" Foreground="#FFCCCCCC" FontSize="12"/>
+                </Grid>
+                <Grid Margin="0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{lex:Loc About_Author}" Foreground="#FF666666" FontSize="12"/>
+                    <TextBlock Grid.Column="1" x:Name="AboutAuthorValue" Foreground="#FFCCCCCC" FontSize="12"/>
+                </Grid>
+                <Grid Margin="0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{lex:Loc About_Repo}" Foreground="#FF666666" FontSize="12"/>
+                    <TextBlock Grid.Column="1" FontSize="12">
+                        <Hyperlink x:Name="RepoLink"
+                                   NavigateUri="https://github.com/ck2739046/Bpm-Measurer"
+                                   Foreground="#FF818CF8" TextDecorations="Underline"
+                                   ToolTip="{lex:Loc About_OpenRepo_Tooltip}"
+                                   RequestNavigate="RepoLink_RequestNavigate">
+                            <Run x:Name="RepoLinkText"/>
+                        </Hyperlink>
+                    </TextBlock>
+                </Grid>
+                <Grid Margin="0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{lex:Loc About_BuildTime}" Foreground="#FF666666" FontSize="12"/>
+                    <TextBlock Grid.Column="1" x:Name="AboutBuildTimeValue" Foreground="#FFCCCCCC"
+                               FontSize="12" TextWrapping="Wrap"/>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
     </Grid>
 </Window>
