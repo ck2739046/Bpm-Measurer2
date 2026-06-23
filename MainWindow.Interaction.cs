@@ -15,7 +15,11 @@ public partial class MainWindow
     // VizGrid / SidebarPanel deselects both regions.
     private void BlankArea_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        Keyboard.ClearFocus();
+        // Focus the overlay (a Focusable Canvas) instead of clearing keyboard focus.
+        // ClearFocus() leaves FocusedElement == null, which destabilises WPF keyboard
+        // routing and silently breaks the Window.PreviewKeyDown Space hotkey (play/pause)
+        // when the user clicks the top toolbar or bottom status bar.
+        Keyboard.Focus(OverlayCanvas);
         _plotAreaHasFocus = false;
         _sidebarHasFocus = false;
         _focusJustTransferred = false;
@@ -37,7 +41,12 @@ public partial class MainWindow
 
     private void OverlayCanvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        Keyboard.ClearFocus();
+        // Move keyboard focus onto the overlay (a Focusable Canvas) instead of clearing it.
+        // ClearFocus() during a mouse-captured drag leaves focus dangling on a non-focusable
+        // element, which silently breaks Window.PreviewKeyDown (Space play/pause) until the
+        // user clicks a focusable region. Focusing the overlay keeps the route valid for the
+        // whole drag lifecycle and also pulls focus away from TextBoxes as before.
+        Keyboard.Focus(OverlayCanvas);
 
         // Focus-region transfer: the first gesture entering the plot area only moves focus
         // (no seek / no offset / no BPM change). Subsequent gestures act normally.
@@ -230,6 +239,10 @@ public partial class MainWindow
         _dragMode = DragMode.None;
         _focusJustTransferred = false;
         OverlayCanvas.ReleaseMouseCapture();
+        // Re-anchor keyboard focus on the overlay after releasing mouse capture, as a
+        // safety net in case focus drifted during the drag. Keeps Window.PreviewKeyDown
+        // (Space play/pause) responsive immediately after a drag-to-seek.
+        Keyboard.Focus(OverlayCanvas);
         if (_dragDisplayColor != null)
         {
             _dragDisplayColor = null;

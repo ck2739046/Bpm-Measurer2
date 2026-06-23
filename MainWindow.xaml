@@ -200,10 +200,15 @@
                     </Image>
                 </Canvas>
 
-                <!-- Overlay: beat grid lines + playhead, captures mouse input -->
+                <!-- Overlay: beat grid lines + playhead, captures mouse input.
+                     Focusable so drag/release leaves keyboard focus on a valid target,
+                     keeping Window.PreviewKeyDown (Space play/pause) working after a drag.
+                     IsTabStop=False keeps it out of the Tab focus order. -->
                 <Canvas x:Name="OverlayCanvas" Grid.RowSpan="3"
                         ClipToBounds="True" Background="Transparent"
                         Visibility="Collapsed"
+                        Focusable="True"
+                        KeyboardNavigation.IsTabStop="False"
                         MouseLeftButtonDown="OverlayCanvas_MouseDown"
                         MouseMove="OverlayCanvas_MouseMove"
                         MouseLeftButtonUp="OverlayCanvas_MouseUp"

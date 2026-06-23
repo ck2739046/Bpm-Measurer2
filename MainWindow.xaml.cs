@@ -105,12 +105,12 @@ public partial class MainWindow : Window
 
         PreviewKeyDown += (s, e) =>
         {
-            if (e.Key == Key.Space)
-            {
-                e.Handled = true;
-                if (_isPlaying) PausePlayback();
-                else StartPlayback();
-            }
+            if (e.Key != Key.Space) return;
+            // Let text input controls (sidebar StepperInput boxes, etc.) keep Space for typing.
+            if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
+            e.Handled = true;
+            if (_isPlaying) PausePlayback();
+            else StartPlayback();
         };
 
         OffsetStepper.Configure(

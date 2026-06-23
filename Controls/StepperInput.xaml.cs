@@ -190,7 +190,12 @@ public partial class StepperInput : UserControl
         if (e.Key == Key.Enter)
         {
             TextBox_Commit(sender, e);
-            Keyboard.ClearFocus();
+            // Return focus to the parent window instead of clearing it. ClearFocus()
+            // leaves FocusedElement == null, which destabilises WPF keyboard routing
+            // and breaks global hotkeys (e.g. Space play/pause) until the user clicks
+            // a focusable element again. The Window is a stable Focusable target.
+            var window = Window.GetWindow(this);
+            if (window != null) Keyboard.Focus(window);
         }
     }
 
