@@ -31,6 +31,14 @@ public class SpectrogramData
     public int Columns { get; init; }
     public double TimeStep { get; init; }
     public double Duration { get; init; }
+    /// <summary>
+    /// Global min/max over <see cref="Magnitudes"/>, computed once on the background
+    /// thread during <see cref="PrecomputedAudioData.ComputeSpectrogram"/>. Precomputed so
+    /// the tiled renderer doesn't have to rescan the whole matrix on the UI thread at
+    /// build time (one O(n) sweep per audio load), and so every tile shares identical
+    /// brightness. Defaults to <c>Range(0,0)</c> for the empty-data early-return paths.
+    /// </summary>
+    public Range GlobalRange { get; init; }
 }
 
 public static class PrecomputedAudioData
@@ -271,7 +279,11 @@ public static class PrecomputedAudioData
             FreqBands = freqBands,
             Columns = columns,
             TimeStep = timeStep,
-            Duration = duration
+            Duration = duration,
+            // Precompute the global brightness range here (background thread) so the tiled
+            // renderer doesn't rescan the whole matrix on the UI thread, and all tiles share
+            // the same normalization.
+            GlobalRange = SpectrogramBitmapRenderer.ComputeGlobalRange(outputMagnitudes)
         };
     }
 }

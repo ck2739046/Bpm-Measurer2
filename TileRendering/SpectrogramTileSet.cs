@@ -11,14 +11,13 @@ namespace BpmMeasurer;
 internal sealed class SpectrogramTileSet : TileSet
 {
     private readonly SpectrogramData _data;
-    private readonly Range _globalRange;
 
     public SpectrogramTileSet(SpectrogramData data, Panel container) : base(container)
     {
         _data = data;
-        // Compute the global min/max once over the entire spectrogram so that every tile
-        // uses the same normalization — otherwise tile seams would show as brightness steps.
-        _globalRange = SpectrogramBitmapRenderer.ComputeGlobalRange(data.Magnitudes);
+        // GlobalRange is precomputed on the background thread during
+        // PrecomputedAudioData.ComputeSpectrogram, so every tile shares identical brightness
+        // without rescanning the whole magnitude matrix here on the UI thread.
     }
 
     public override double PixelsPerSecond => _data.Columns / _data.Duration;
@@ -26,6 +25,11 @@ internal sealed class SpectrogramTileSet : TileSet
 
     public void Build()
     {
+        // Guard against degenerate audio (Duration<=0 or no columns): avoids Infinity
+        // PixelsPerSecond and a zero-length bitmap. UpdateTransform's NaN guard would
+        // already swallow the transform, but bailing here skips needless allocations.
+        if (_data.Duration <= 0 || _data.Columns <= 0) return;
+
         int totalCols = _data.Columns;
         int fullTiles = (totalCols + TileWidth - 1) / TileWidth;
         double timePerCol = _data.Duration / totalCols;
@@ -36,7 +40,7 @@ internal sealed class SpectrogramTileSet : TileSet
             int colCount = System.Math.Min(TileWidth, totalCols - colStart);
             if (colCount <= 0) break;
 
-            var bmp = SpectrogramBitmapRenderer.CreateTile(_data, colStart, colCount, _globalRange);
+            var bmp = SpectrogramBitmapRenderer.CreateTile(_data, colStart, colCount, _data.GlobalRange);
             var image = CreateTileImage(bmp);
             var (scale, translate) = GetTransforms(image);
 
