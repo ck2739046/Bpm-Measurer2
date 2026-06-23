@@ -48,6 +48,11 @@ public partial class MainWindow : Window
     // undo snapshots, so Undo/Redo restores data without touching which row is open.
     private Guid? _expandedSegmentId;
 
+    // One-shot flag set by auto-expand paths (drag / undo-redo / add-segment) so the next
+    // RebuildSegmentList pins the expanded segment's bottom to the viewport bottom instead
+    // of restoring the prior scroll offset. Consumed (reset to false) inside RebuildSegmentList.
+    private bool _scrollExpandedToBottom;
+
     // Overlay canvas elements (dynamically managed)
     private readonly List<UIElement> _overlayElements = new();
     private readonly List<UIElement> _beatRowElements = new();

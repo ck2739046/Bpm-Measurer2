@@ -200,8 +200,15 @@ public partial class MainWindow
                 double timeDiff = mouseTime - seg.Time;
                 if (beatsFromStart > 0 && timeDiff > 0.001)
                 {
-                    // Auto-expand this segment so the user sees the BPM change live.
-                    _expandedSegmentId = seg.Id;
+                    // Auto-expand this segment so the user sees the BPM change live. Only
+                    // (re)expand on the transition into it — during a continuous drag we must
+                    // not re-scroll every mousemove, otherwise the saved-offset restore that
+                    // keeps the viewport stable would be fought each frame.
+                    if (_expandedSegmentId != seg.Id)
+                    {
+                        _expandedSegmentId = seg.Id;
+                        _scrollExpandedToBottom = true;
+                    }
                     double rawBpm = (beatsFromStart * 60.0) / timeDiff;
                     UpdateRawBpm(seg.Id, rawBpm);
                 }

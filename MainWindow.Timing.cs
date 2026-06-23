@@ -129,10 +129,13 @@ public partial class MainWindow
 
     private void RebuildSegmentList()
     {
-        // Save / restore the scroll offset so expanding/collapsing a segment never
-        // shifts the viewport — even at the very bottom where WPF would otherwise
-        // re-anchor to the new (shorter) content height.
+        // Save / restore the scroll offset so editing a value (typing, BPM drag) never shifts
+        // the viewport — even at the very bottom where WPF would otherwise re-anchor to the
+        // new content height. Auto-expand paths set _scrollExpandedToBottom to instead pin the
+        // expanded segment's bottom edge to the viewport bottom.
         double savedOffset = SegmentScrollViewer.VerticalOffset;
+        bool scrollToBottom = _scrollExpandedToBottom;
+        _scrollExpandedToBottom = false;
 
         SegmentListPanel.Children.Clear();
 
@@ -149,7 +152,39 @@ public partial class MainWindow
             SegmentListPanel.Children.Add(row);
         }
 
-        SegmentScrollViewer.ScrollToVerticalOffset(savedOffset);
+        if (scrollToBottom)
+            ScrollExpandedToBottom();
+        else
+            SegmentScrollViewer.ScrollToVerticalOffset(savedOffset);
+    }
+
+    /// <summary>
+    /// Scrolls the ScrollViewer so the currently-expanded segment's bottom edge sits at the
+    /// bottom of the viewport. Forces a layout pass first so ActualHeight / transforms reflect
+    /// the just-rebuilt tree.
+    /// </summary>
+    private void ScrollExpandedToBottom()
+    {
+        if (!_expandedSegmentId.HasValue) return;
+
+        int idx = -1;
+        for (int i = 0; i < _timingPoints.Count; i++)
+        {
+            if (_timingPoints[i].Id == _expandedSegmentId.Value) { idx = i; break; }
+        }
+        if (idx < 0 || idx >= SegmentListPanel.Children.Count) return;
+
+        // Force a synchronous layout pass so positions are current after the rebuild.
+        SegmentScrollViewer.UpdateLayout();
+
+        if (!(SegmentListPanel.Children[idx] is FrameworkElement row)) return;
+
+        // Bottom edge of the row relative to the StackPanel (scroll content root).
+        var origin = row.TransformToVisual(SegmentListPanel).Transform(new Point(0, 0));
+        double rowBottom = origin.Y + row.ActualHeight + row.Margin.Bottom;
+        double desired = rowBottom - SegmentScrollViewer.ViewportHeight;
+        double clamped = Math.Max(0, Math.Min(desired, SegmentScrollViewer.ScrollableHeight));
+        SegmentScrollViewer.ScrollToVerticalOffset(clamped);
     }
 
     /// <summary>
@@ -533,6 +568,7 @@ public partial class MainWindow
         _rawPoints.Add(new RawTimingPoint(newId, newBeat, prevBpm, durationMax));
         _rawPoints.Sort((a, b) => a.BeatIndex.CompareTo(b.BeatIndex));
         _expandedSegmentId = newId; // auto-expand the freshly added segment
+        _scrollExpandedToBottom = true;
         RefreshTimingPoints();
         RecordTimingIfChanged();
     }

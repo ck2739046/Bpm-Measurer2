@@ -142,6 +142,7 @@ public partial class MainWindow
             if (!kv.Value.Equals(match))
             {
                 _expandedSegmentId = kv.Key;
+                _scrollExpandedToBottom = true;
                 RebuildSegmentList();
                 break;
             }
