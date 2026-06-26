@@ -14,10 +14,10 @@ public partial class MainWindow
     // ── Metronome state ──
     private bool _metronomeEnabled = true;
     private MetronomeClickAsset[]? _metronomeClicks;
-    /// <summary>beatIndex → BASS sync handle；仅含已武装、尚未清理的拍（仅 UI 线程访问）。</summary>
-    private readonly Dictionary<int, int> _beatSyncs = new();
-    /// <summary>下一个待武装的整数拍号；int.MinValue = 无武装（从当前位置起重算）。</summary>
-    private int _armedUntilBeat = int.MinValue;
+    /// <summary>beatIndex (encoded as long via BitConverter) → BASS sync handle；仅含已武装、尚未清理的拍（仅 UI 线程访问）。</summary>
+    private readonly Dictionary<long, int> _beatSyncs = new();
+    /// <summary>下一个待武装的拍号；NaN = 无武装（从当前位置起重算）。</summary>
+    private double _armedUntilBeat = double.NaN;
 
     private const double ArmHorizonSec = 3.0;      // 向前武装的时间窗口
     private const double RefillThresholdSec = 1.0;  // 已武装到此秒以内则补武装
@@ -45,7 +45,7 @@ public partial class MainWindow
 
     // ── Accent: per-segment BeatsPerBar grouping, reset per timing segment ──
 
-    private ClickAccent GetAccentForBeat(int beatIndex)
+    private ClickAccent GetAccentForBeat(double beatIndex)
     {
         if (_timingPoints.Count == 0) return ClickAccent.Weak;
         var point = _timingPoints[0];
@@ -57,9 +57,9 @@ public partial class MainWindow
                 break;
             }
         }
-        int segStart = (int)Math.Round(point.BeatIndex);
+        double segStart = point.BeatIndex;
         int num = point.BeatsPerBar > 0 ? point.BeatsPerBar : 4;
-        int inMeasure = (((beatIndex - segStart) % num) + num) % num;
+        int inMeasure = (int)(((beatIndex - segStart) % num + num) % num);
         return inMeasure switch
         {
             0 => ClickAccent.Strong,   // 段起点 / 第 1 拍
@@ -77,8 +77,8 @@ public partial class MainWindow
     {
         if (_bgmStream == 0 || _timingPoints.Count == 0 || !HasClicks) return;
 
-        int nextBeat = (int)Math.Floor(TimingEngine.GetBeatIndexAtTime(currentPos, _timingPoints)) + 1;
-        int i = Math.Max(nextBeat, _armedUntilBeat);
+        double nextBeat = Math.Floor(TimingEngine.GetBeatIndexAtTime(currentPos, _timingPoints)) + 1.0;
+        double i = double.IsNaN(_armedUntilBeat) ? nextBeat : Math.Max(nextBeat, _armedUntilBeat);
         double untilTime = currentPos + ArmHorizonSec;
 
         int guard = 0;
@@ -88,23 +88,24 @@ public partial class MainWindow
             if (beatTime > untilTime) break;
             if (beatTime >= currentPos)   // 跳过已过去的拍（mixtime 不会回放）
                 ArmOneBeat(i, beatTime);
-            _armedUntilBeat = i + 1;
-            i++;
+            _armedUntilBeat = i + 1.0;
+            i += 1.0;
         }
 
         PrunePastBeats(currentPos);
     }
 
-    private void ArmOneBeat(int beatIndex, double beatTime)
+    private void ArmOneBeat(double beatIndex, double beatTime)
     {
         long bytePos = Bass.BASS_ChannelSeconds2Bytes(_bgmStream, beatTime);
         _metronomeSyncProc ??= MetronomeSyncProc;
+        long encodedBeat = BitConverter.DoubleToInt64Bits(beatIndex);
         int sync = Bass.BASS_ChannelSetSync(
             _bgmStream,
             BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME | BASSSync.BASS_SYNC_ONETIME,
-            bytePos, _metronomeSyncProc, (IntPtr)beatIndex);
+            bytePos, _metronomeSyncProc, (IntPtr)encodedBeat);
         if (sync != 0)
-            _beatSyncs[beatIndex] = sync;
+            _beatSyncs[encodedBeat] = sync;
     }
 
     /// <summary>从 BASS 与字典中移除全部已武装 sync，重置武装游标。</summary>
@@ -116,17 +117,18 @@ public partial class MainWindow
                 Bass.BASS_ChannelRemoveSync(_bgmStream, sync);
         }
         _beatSyncs.Clear();
-        _armedUntilBeat = int.MinValue;
+        _armedUntilBeat = double.NaN;
     }
 
     /// <summary>字典过大时剪掉已过去的拍（ONETIME 已自动从 BASS 移除，余者将在 pause 时清理）。</summary>
     private void PrunePastBeats(double currentPos)
     {
         if (_beatSyncs.Count <= 64) return;
-        var stale = new List<int>();
+        var stale = new List<long>();
         foreach (var kv in _beatSyncs)
         {
-            double t = TimingEngine.GetTimeAtBeatIndex(kv.Key, _timingPoints);
+            double beatIndex = BitConverter.Int64BitsToDouble(kv.Key);
+            double t = TimingEngine.GetTimeAtBeatIndex(beatIndex, _timingPoints);
             if (t < currentPos - 0.5) stale.Add(kv.Key);
         }
         foreach (var b in stale) _beatSyncs.Remove(b);
@@ -136,6 +138,7 @@ public partial class MainWindow
     private void RefillMetronomeIfNeeded(double currentPos)
     {
         if (!_metronomeEnabled || !HasClicks || _bgmStream == 0) return;
+        if (double.IsNaN(_armedUntilBeat)) { ArmMetronome(currentPos); return; }
         double armedUntilTime = TimingEngine.GetTimeAtBeatIndex(_armedUntilBeat, _timingPoints);
         if (armedUntilTime < currentPos + RefillThresholdSec)
             ArmMetronome(currentPos);
@@ -147,7 +150,7 @@ public partial class MainWindow
     {
         if (!HasClicks) return;
         var clicks = _metronomeClicks!;
-        int beatIndex = user.ToInt32();
+        double beatIndex = BitConverter.Int64BitsToDouble((long)user);
         var accent = GetAccentForBeat(beatIndex);   // 纯函数：只读 _timingPoints（播放中不变）
         int assetIdx = (int)accent;
         if (assetIdx < 0 || assetIdx >= clicks.Length) return;

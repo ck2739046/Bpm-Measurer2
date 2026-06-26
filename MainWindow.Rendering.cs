@@ -239,7 +239,10 @@ public partial class MainWindow
 
                 if (showHere)
                 {
-                    int globalBeatIndex = (int)point.BeatIndex + relBeat;
+                    double globalBeatIndex = point.BeatIndex + relBeat;
+                    string beatLabel = Math.Abs(globalBeatIndex % 1.0) < 0.0001
+                        ? ((long)Math.Round(globalBeatIndex)).ToString()
+                        : globalBeatIndex.ToString("0.#");
 
                     var beatColor = isSectionStart
                         ? new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80))
@@ -264,13 +267,13 @@ public partial class MainWindow
                     // Beat number
                     var tb = new TextBlock
                     {
-                        Text = globalBeatIndex.ToString(),
+                        Text = beatLabel,
                         Foreground = displayColor,
                         FontSize = isSectionStart ? 14 : 12,
                         FontWeight = isSectionStart ? FontWeights.Bold : FontWeights.Normal,
                         FontFamily = new FontFamily("Consolas"),
                         TextAlignment = TextAlignment.Center,
-                        Width = 30
+                        Width = 50
                     };
                     Canvas.SetLeft(tb, x - 15);
                     Canvas.SetTop(tb, 12);

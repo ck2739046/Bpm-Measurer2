@@ -18,7 +18,8 @@ public static class TimingConfigSerializer
             bool isAnchor = Math.Abs(p.BeatIndex) < 0.001;
             // Skip illegal segments (start time past audio end) on export.
             if (!isAnchor && p.Time > duration) continue;
-            lines.Add($"beat_index = {(long)Math.Round(p.BeatIndex)}, bpm = {p.Bpm:F3}, beats_per_bar = {p.BeatsPerBar}");
+            string beatStr = Math.Abs(p.BeatIndex % 1.0) < 0.0001 ? ((long)Math.Round(p.BeatIndex)).ToString() : p.BeatIndex.ToString("F3", System.Globalization.CultureInfo.InvariantCulture);
+            lines.Add($"beat_index = {beatStr}, bpm = {p.Bpm:F3}, beats_per_bar = {p.BeatsPerBar}");
         }
         return string.Join(Environment.NewLine, lines);
     }

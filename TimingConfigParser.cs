@@ -13,7 +13,7 @@ public static class TimingConfigParser
     /// <summary>
     /// Validates and parses a timing config text. Returns a localized error reason on failure,
     /// or null on success. Rules: (1) exactly one global_offset; (2) ≥1 segment; (3) each segment has
-    /// both keys; (4) beat_index is a non-negative integer; (5) bpm is a non-negative number;
+    /// both keys; (4) beat_index is a non-negative number; (5) bpm is a non-negative number;
     /// (6) beat_index strictly ascending in file order; (7) first segment beat_index = 0.
     /// </summary>
     public static bool TryParse(
@@ -24,8 +24,8 @@ public static class TimingConfigParser
         error = null;
 
         bool hasOffset = false;
-        var parsed = new List<(long Beat, double Bpm, int Beats)>();
-        long prevBeat = long.MinValue;
+        var parsed = new List<(double Beat, double Bpm, int Beats)>();
+        double prevBeat = double.MinValue;
         int segNo = 0;
 
         var lines = text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
@@ -100,12 +100,13 @@ public static class TimingConfigParser
                     return false;
                 }
 
-                // Rule 4: beat_index must be a non-negative integer.
+                // Rule 4: beat_index must be a non-negative number.
                 var bm = Regex.Match(line, @"beat_index\s*=\s*([^\s,]+)", RegexOptions.IgnoreCase);
                 if (!bm.Success
-                    || !long.TryParse(bm.Groups[1].Value, NumberStyles.Integer,
-                        CultureInfo.InvariantCulture, out long beat)
-                    || beat < 0)
+                    || !double.TryParse(bm.Groups[1].Value, NumberStyles.Number,
+                        CultureInfo.InvariantCulture, out double beat)
+                    || beat < 0
+                    || !double.IsFinite(beat))
                 {
                     error = string.Format(MainWindow.Loc("ConfigImport_Err_BadBeatIndex"), segNo);
                     return false;
@@ -163,7 +164,7 @@ public static class TimingConfigParser
         }
 
         // Rule 7: the first segment must be at beat_index 0 (the offset anchor).
-        if (parsed[0].Beat != 0)
+        if (Math.Abs(parsed[0].Beat) > 0.001)
         {
             error = MainWindow.Loc("ConfigImport_Err_FirstBeatNotZero");
             return false;

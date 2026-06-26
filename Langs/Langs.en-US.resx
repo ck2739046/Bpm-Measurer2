@@ -42,7 +42,7 @@
   <data name="ConfigImport_Err_MultipleInLineSeg" xml:space="preserve"><value>Segment {0}: a line may contain only one segment</value></data>
   <data name="ConfigImport_Err_NoSegment" xml:space="preserve"><value>At least 1 bpm segment is required</value></data>
   <data name="ConfigImport_Err_MalformedSegment" xml:space="preserve"><value>Segment {0} is missing beat_index or bpm</value></data>
-  <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>Segment {0}: beat_index is not a non-negative integer</value></data>
+  <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>Segment {0}: beat_index is not a non-negative number</value></data>
   <data name="ConfigImport_Err_BadBpm" xml:space="preserve"><value>Segment {0}: bpm is not a non-negative number</value></data>
   <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index not in ascending order (segment {0})</value></data>
   <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>The first bpm segment must have beat_index = 0</value></data>

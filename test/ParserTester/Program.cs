@@ -49,7 +49,6 @@ class Program
         TestInvalid("R3.3_duplicate_beat_index", "ConfigImport_Err_MultipleInLineSeg");
         TestInvalid("R3.4_duplicate_bpm", "ConfigImport_Err_MultipleInLineSeg");
         TestInvalid("R3.5_segment_mixed_with_offset", "ConfigImport_Err_MultipleInLine");
-        TestInvalid("R4.1_beat_index_float", "ConfigImport_Err_BadBeatIndex");
         TestInvalid("R4.2_beat_index_negative", "ConfigImport_Err_BadBeatIndex");
         TestInvalid("R4.3_beat_index_nan", "ConfigImport_Err_BadBeatIndex");
         TestInvalid("R5.1_bpm_zero_or_negative", "ConfigImport_Err_BadBpm");
@@ -103,6 +102,7 @@ class Program
         TestValid_N8();
         TestValid_N9();
         TestValid_N10();
+        TestValid_N11();
     }
 
     static bool ParseValid(string fileName, out double offset, out List<RawTimingPoint> points)
@@ -220,6 +220,19 @@ class Program
         if (!ParseValid(name, out var off, out var pts)) return;
         if (pts[0].Bpm != 1000) { Fail(name, $"bpm=2000 应 clamp→1000，实际 {pts[0].Bpm}"); return; }
         Pass(name, "bpm=2000 正确 clamp 到 1000");
+    }
+
+    static void TestValid_N11()
+    {
+        const string name = "N11_beat_index_float";
+        if (!ParseValid(name, out var off, out var pts)) return;
+        if (off != 0.5) { Fail(name, $"offset 期望 0.5，实际 {off}"); return; }
+        if (pts.Count != 3) { Fail(name, $"段数期望 3，实际 {pts.Count}"); return; }
+        if (pts[0].BeatIndex != 0) { Fail(name, $"段0 beat_index 期望 0，实际 {pts[0].BeatIndex}"); return; }
+        if (Math.Abs(pts[1].BeatIndex - 64.5) > 0.001) { Fail(name, $"段1 beat_index 期望 64.5，实际 {pts[1].BeatIndex}"); return; }
+        if (pts[1].BeatsPerBar != 3) { Fail(name, $"段1 beats_per_bar 期望 3，实际 {pts[1].BeatsPerBar}"); return; }
+        if (pts[2].BeatIndex != 200) { Fail(name, $"段2 beat_index 期望 200，实际 {pts[2].BeatIndex}"); return; }
+        Pass(name, $"offset={off} 小数 beat_index 正确解析");
     }
 
     // ═══ Helpers ═══

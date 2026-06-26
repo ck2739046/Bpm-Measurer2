@@ -40,7 +40,7 @@ public partial class MainWindow
 
     // ── Import / Export config (plain-text format) ──
     // Line 1: global_offset = <seconds>
-    // Line 2+: beat_index = <int>, bpm = <float>, beats_per_bar = <int>
+    // Line 2+: beat_index = <number>, bpm = <float>, beats_per_bar = <int>
     //         (beats_per_bar is optional on import; defaults to 4, clamped 1–20)
 
     private void ExportConfigBtn_Click(object sender, RoutedEventArgs e)

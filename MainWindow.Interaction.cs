@@ -75,7 +75,7 @@ public partial class MainWindow
         {
             // Clicking near a visible triangle (within 15px) starts a drag.
             double nearestBeatIdx = TimingEngine.GetBeatIndexAtTime(mouseTime, _timingPoints);
-            long globalIdx = (long)Math.Round(nearestBeatIdx);
+            double globalIdx = Math.Round(nearestBeatIdx);
             double beatTimeAtIdx = TimingEngine.GetTimeAtBeatIndex(globalIdx, _timingPoints);
             double pixelDist = Math.Abs(TimeToCanvasX(beatTimeAtIdx) - x);
 
@@ -85,13 +85,13 @@ public partial class MainWindow
             double canvasW = OverlayCanvas.ActualWidth;
             double pxPerBeat = canvasW / dataSpan * (60.0 / segAtMouse.Bpm);
             int densityInterval = BeatGridMath.GetBarDensityInterval(pxPerBeat, segAtMouse.BeatsPerBar);
-            long relBeatAtMouse = globalIdx - (long)segAtMouse.BeatIndex;
+            double relBeatAtMouse = globalIdx - segAtMouse.BeatIndex;
             // A triangle is draggable iff it is visually shown: section-start (relBeat==0) is always
             // shown; otherwise the beat must land on the per-segment bar-density grid.
             bool onTriangle = (globalIdx >= 0) && pixelDist < 15
-                              && (relBeatAtMouse == 0 || relBeatAtMouse % densityInterval == 0);
+                              && (Math.Abs(relBeatAtMouse) < 0.001 || Math.Abs(relBeatAtMouse % densityInterval) < 0.001);
 
-            if (onTriangle && globalIdx == 0)
+            if (onTriangle && Math.Abs(globalIdx) < 0.001)
             {
                 // Drag the start anchor → adjust global offset
                 _dragMode = DragMode.Offset;

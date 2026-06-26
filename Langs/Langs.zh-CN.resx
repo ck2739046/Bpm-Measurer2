@@ -42,7 +42,7 @@
   <data name="ConfigImport_Err_MultipleInLineSeg" xml:space="preserve"><value>第 {0} 段所在行只能有一个段落</value></data>
   <data name="ConfigImport_Err_NoSegment" xml:space="preserve"><value>至少需要 1 个 bpm 段</value></data>
   <data name="ConfigImport_Err_MalformedSegment" xml:space="preserve"><value>第 {0} 段缺少 beat_index 或 bpm</value></data>
-  <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>第 {0} 段的 beat_index 不是非负整数</value></data>
+  <data name="ConfigImport_Err_BadBeatIndex" xml:space="preserve"><value>第 {0} 段的 beat_index 不是非负数</value></data>
   <data name="ConfigImport_Err_BadBpm" xml:space="preserve"><value>第 {0} 段的 bpm 不是非负数字</value></data>
   <data name="ConfigImport_Err_NotIncreasing" xml:space="preserve"><value>beat_index 未从小到大排列（第 {0} 段）</value></data>
   <data name="ConfigImport_Err_FirstBeatNotZero" xml:space="preserve"><value>第一个 bpm 段的 beat_index 必须是 0</value></data>

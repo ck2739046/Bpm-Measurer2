@@ -63,7 +63,7 @@ public partial class MainWindow
     private void UpdateRawBeatIndex(Guid id, double beatIndex)
     {
         if (_isPlaying) PausePlayback();
-        beatIndex = Math.Max(1, Math.Round(beatIndex));
+        beatIndex = Math.Max(0.001, beatIndex);
 
         // Clamp to the frozen cap captured when this segment was created (does not change afterwards).
         int segIdx = -1;
@@ -73,7 +73,7 @@ public partial class MainWindow
         {
             double frozenMax = _rawPoints[segIdx].MaxBeatIndex;
             if (frozenMax < double.MaxValue)
-                beatIndex = Math.Min(beatIndex, Math.Floor(frozenMax));
+                beatIndex = Math.Min(beatIndex, frozenMax);
         }
 
         if (_rawPoints.Any(p => p.Id != id && Math.Abs(p.BeatIndex - beatIndex) < 0.001))
@@ -102,27 +102,27 @@ public partial class MainWindow
     /// Max beat index the segment at <paramref name="segIdx"/> may start at, so that its
     /// start time does not exceed the audio duration and it stays before the next segment.
     /// </summary>
-    private long GetMaxBeatIndexForSegment(int segIdx)
+    private double GetMaxBeatIndexForSegment(int segIdx)
     {
         // segIdx == _timingPoints.Count means a hypothetical new segment appended after the last.
         if (_audioData == null || segIdx <= 0 || segIdx > _timingPoints.Count)
-            return long.MaxValue;
+            return double.MaxValue;
 
         var prev = _timingPoints[segIdx - 1];
         double duration = _audioData.Duration;
 
         // Segment time = prev.Time + (beat - prev.BeatIndex) * 60 / prev.Bpm  <=  duration
         double timeBasedMax = prev.BeatIndex + (duration - prev.Time) * prev.Bpm / 60.0;
-        double max = Math.Floor(timeBasedMax);
+        double max = timeBasedMax;
 
         if (segIdx + 1 < _timingPoints.Count)
         {
             double nextBeat = _timingPoints[segIdx + 1].BeatIndex;
-            max = Math.Min(max, nextBeat - 1);
+            max = Math.Min(max, nextBeat - 0.001);
         }
 
         // Always keep at least a 1-beat gap from the previous segment.
-        return (long)Math.Max(prev.BeatIndex + 1, max);
+        return Math.Max(prev.BeatIndex + 1.0, max);
     }
 
     // ── Segment list panel (sidebar) ──
@@ -350,7 +350,7 @@ public partial class MainWindow
         {
             beatField = SegmentRowFactory.BuildStepper(
                 Loc("Beat_Label"),
-                new[] { 1.0 }, 1, point.MaxBeatIndex, 0,
+                new[] { 1.0, 0.1 }, 0.001, point.MaxBeatIndex, 1,
                 Color.FromRgb(0xDD, 0xDD, 0xDD),
                 point.Id, false, point.BeatIndex, 0,
                 v =>
@@ -443,7 +443,7 @@ public partial class MainWindow
         Color timeColor = isIllegal ? Color.FromRgb(0xEF, 0x44, 0x44) : Color.FromRgb(0x81, 0x8C, 0xF8);
         Color labelColor = Color.FromRgb(0x66, 0x66, 0x66);
 
-        string beatText = ((long)Math.Round(point.BeatIndex)).ToString();
+        string beatText = Math.Abs(point.BeatIndex % 1.0) < 0.0001 ? ((long)Math.Round(point.BeatIndex)).ToString() : point.BeatIndex.ToString("0.###");
         string bpmText = point.Bpm.ToString("0.000");
         string bpbText = point.BeatsPerBar.ToString();
         string timeText = $"{point.Time:F3}s" + (isIllegal ? $"  ⚠ {Loc("Segment_Illegal")}" : "");
@@ -548,15 +548,15 @@ public partial class MainWindow
         // Snap to the nearest beat at the playhead position.
         double t = Math.Clamp(_viewCenterTime, 0, _audioData.Duration);
         double beatF = TimingEngine.GetBeatIndexAtTime(t, _timingPoints);
-        long newBeat = Math.Max(1, (long)Math.Round(beatF));
+        double newBeat = Math.Max(1.0, Math.Round(beatF));
 
         // Rule: only append after the last existing beat index.
-        long maxBeat = (long)Math.Floor(_rawPoints.Max(p => p.BeatIndex));
+        double maxBeat = _rawPoints.Max(p => p.BeatIndex);
         if (newBeat <= maxBeat)
-            newBeat = maxBeat + 1;
+            newBeat = maxBeat + 1.0;
 
         // Constraint: the new (last) segment's start time must not exceed audio duration.
-        long durationMax = GetMaxBeatIndexForSegment(_timingPoints.Count); // hypothetical appended segment
+        double durationMax = GetMaxBeatIndexForSegment(_timingPoints.Count); // hypothetical appended segment
         if (newBeat > durationMax)
             return; // no valid slot before the audio end — abort silently
 
