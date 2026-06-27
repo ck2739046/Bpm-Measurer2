@@ -20,6 +20,17 @@ public class WaveformEnvelope
     public short[] MinValues { get; init; } = Array.Empty<short>();
     public short[] MaxValues { get; init; } = Array.Empty<short>();
     public int Columns { get; init; }
+    /// <summary>Source sample rate (Hz). Stored so tile mapping can compute the true
+    /// time of each column instead of assuming Duration/Columns (which drifts due to
+    /// integer <see cref="FramesPerColumn"/> rounding and accumulated error on long audio).</summary>
+    public int SampleRate { get; init; }
+    /// <summary>Mono samples aggregated into one column (integer-truncated from
+    /// totalFrames/columns). Stored so the true per-column time step
+    /// (<see cref="TimeStep"/>) can be derived exactly.</summary>
+    public int FramesPerColumn { get; init; }
+    /// <summary>True time spanned by one column = <see cref="FramesPerColumn"/>/<see cref="SampleRate"/>.
+    /// Replaces the old 1/columnsPerSecond constant, eliminating the cumulative drift between
+    /// the waveform's nominal and actual sample positions on long audio.</summary>
     public double TimeStep { get; init; }
     public double Duration { get; init; }
 }
@@ -29,6 +40,20 @@ public class SpectrogramData
     public float[,] Magnitudes { get; init; } = new float[0, 0];
     public int FreqBands { get; init; }
     public int Columns { get; init; }
+    public int SampleRate { get; init; }
+    /// <summary>FFT window length in samples (each column's magnitude is the spectrum of
+    /// an <see cref="FftSize"/>-sample window starting at <c>column*hop</c> samples). Stored
+    /// so tile mapping can compensate the window-center phase: a column's energy is centered
+    /// at <c>column*hop + FftSize/2</c>, i.e. <c>WindowCenterOffset</c> after the column start.</summary>
+    public int FftSize { get; init; }
+    /// <summary>Time from a column's window start (at <c>column*hop</c> samples) to that
+    /// window's energy center = <see cref="FftSize"/>/(2*<see cref="SampleRate"/>). Added to
+    /// each tile's time origin so the spectrogram lines up with the waveform/playhead,
+    /// instead of leading it by half a window (up to ~186 ms at 22050 Hz).</summary>
+    public double WindowCenterOffset { get; init; }
+    /// <summary>True time spanned by one column = hopSamples/<see cref="SampleRate"/>. Replaces
+    /// the old 1/columnsPerSecond constant, eliminating the cumulative drift on long audio
+    /// when <c>sampleRate*0.005</c> is not an integer (e.g. 44100 Hz → hop 220, not 220.5).</summary>
     public double TimeStep { get; init; }
     public double Duration { get; init; }
     /// <summary>
@@ -45,7 +70,7 @@ public static class PrecomputedAudioData
 {
     private static readonly object StreamLock = new();
 
-    public static WaveformEnvelope ComputeWaveform(short[] monoSamples, double duration)
+    public static WaveformEnvelope ComputeWaveform(short[] monoSamples, double duration, int sampleRate)
     {
         const int columnsPerSecond = 400;
         var totalFrames = monoSamples.Length; // 已下混为 mono，长度即帧数
@@ -87,7 +112,13 @@ public static class PrecomputedAudioData
             MinValues = minValues,
             MaxValues = maxValues,
             Columns = columns,
-            TimeStep = 1.0 / columnsPerSecond,
+            SampleRate = sampleRate,
+            FramesPerColumn = framesPerColumn,
+            // True per-column step from actual sample positions, not the nominal
+            // 1/columnsPerSecond: this keeps the waveform's time axis anchored to real
+            // PCM positions so it stays aligned with the spectrogram and the playhead
+            // even when totalFrames is not an exact multiple of columns.
+            TimeStep = sampleRate > 0 ? framesPerColumn / (double)sampleRate : 1.0 / columnsPerSecond,
             Duration = duration
         };
     }
@@ -278,7 +309,16 @@ public static class PrecomputedAudioData
             Magnitudes = outputMagnitudes,
             FreqBands = freqBands,
             Columns = columns,
-            TimeStep = timeStep,
+            SampleRate = sampleRate,
+            FftSize = fftSize,
+            // Window-center phase compensation: column c's energy is centered at
+            // c*hop + fftSize/2 samples, i.e. fftSize/(2*sampleRate) seconds after the
+            // nominal column time. Without this the spectrogram leads the waveform/playhead.
+            WindowCenterOffset = sampleRate > 0 ? fftSize / (2.0 * sampleRate) : 0.0,
+            // True per-column step from actual hop size, not the nominal 1/columnsPerSecond:
+            // eliminates the cumulative drift on long audio whose sampleRate*0.005 is not
+            // an integer (e.g. 44100 Hz → hop rounds to 220, not 220.5).
+            TimeStep = sampleRate > 0 ? hopSamples / (double)sampleRate : timeStep,
             Duration = duration,
             // Precompute the global brightness range here (background thread) so the tiled
             // renderer doesn't rescan the whole matrix on the UI thread, and all tiles share

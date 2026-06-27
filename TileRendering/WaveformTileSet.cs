@@ -16,7 +16,7 @@ internal sealed class WaveformTileSet : TileSet
         _env = env;
     }
 
-    public override double PixelsPerSecond => _env.Columns / _env.Duration;
+    public override double PixelsPerSecond => _env.TimeStep > 0 ? 1.0 / _env.TimeStep : _env.Columns / _env.Duration;
     public override int BitmapPixelHeight => WaveformBitmapRenderer.BitmapHeight;
 
     /// <summary>
@@ -33,7 +33,10 @@ internal sealed class WaveformTileSet : TileSet
 
         int totalCols = _env.Columns;
         int fullTiles = (totalCols + TileWidth - 1) / TileWidth;
-        double timePerCol = _env.Duration / totalCols;
+        // Real per-column time step (FramesPerColumn/SampleRate), so each tile's origin is
+        // anchored to actual PCM positions and stays aligned with the spectrogram/playhead
+        // instead of drifting on long audio.
+        double timePerCol = _env.TimeStep;
 
         for (int i = 0; i < fullTiles; i++)
         {

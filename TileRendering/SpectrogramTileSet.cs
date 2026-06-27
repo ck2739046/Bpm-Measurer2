@@ -20,7 +20,7 @@ internal sealed class SpectrogramTileSet : TileSet
         // without rescanning the whole magnitude matrix here on the UI thread.
     }
 
-    public override double PixelsPerSecond => _data.Columns / _data.Duration;
+    public override double PixelsPerSecond => _data.TimeStep > 0 ? 1.0 / _data.TimeStep : _data.Columns / _data.Duration;
     public override int BitmapPixelHeight => _data.FreqBands;
 
     public void Build()
@@ -32,7 +32,14 @@ internal sealed class SpectrogramTileSet : TileSet
 
         int totalCols = _data.Columns;
         int fullTiles = (totalCols + TileWidth - 1) / TileWidth;
-        double timePerCol = _data.Duration / totalCols;
+        // Real per-column time step (hopSamples/SampleRate) anchors each tile to actual PCM
+        // positions, eliminating the cumulative drift when sampleRate*0.005 is not an integer.
+        double timePerCol = _data.TimeStep;
+        // Shift each tile's origin so a column's on-screen center lands at its true energy
+        // center (column start + half FFT window). WindowCenterOffset is the half-window phase
+        // (up to ~186 ms at 22050 Hz); -0.5*timePerCol accounts for the tile origin being a
+        // column's left edge. Without this the spectrogram leads the waveform/playhead.
+        double centerShift = _data.WindowCenterOffset - 0.5 * timePerCol;
 
         for (int i = 0; i < fullTiles; i++)
         {
@@ -50,7 +57,7 @@ internal sealed class SpectrogramTileSet : TileSet
                 Image = image,
                 Scale = scale,
                 Translate = translate,
-                TimeStart = colStart * timePerCol,
+                TimeStart = colStart * timePerCol + centerShift,
                 ColStart = colStart,
                 ColCount = colCount,
             });
