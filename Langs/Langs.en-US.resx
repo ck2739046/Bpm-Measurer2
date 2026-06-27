@@ -15,7 +15,7 @@
   <data name="AudioFiles" xml:space="preserve"><value>Audio Files</value></data>
   <data name="AllFiles" xml:space="preserve"><value>All Files</value></data>
   <data name="DropHint" xml:space="preserve"><value>Drag &amp; drop an audio file here, or click "Import Audio"</value></data>
-  <data name="LoadError" xml:space="preserve"><value>Failed to load audio file.&#xA;Please ensure the format is supported (mp3/wav/ogg/flac).</value></data>
+  <data name="LoadError" xml:space="preserve"><value>Failed to load audio file.&#xA;Please ensure the format is supported (MP3/WAV/OGG/FLAC/AAC/M4A/OPUS/MKA, etc.).</value></data>
   <data name="Error" xml:space="preserve"><value>Error</value></data>
   <data name="SampleRate" xml:space="preserve"><value>Sample Rate: </value></data>
   <data name="Duration" xml:space="preserve"><value>Duration: </value></data>

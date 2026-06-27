@@ -97,6 +97,9 @@ public partial class MainWindow : Window
         ApplyLocalizedTexts();
 
         AllowDrop = true;
+        // 拖放不按扩展名过滤:任意文件都可放入。能否成功解码取决于启动时已注册的
+        // BASS 插件集(bass_aac/bassflac/bassopus/basswebm + 内置),与文件选择器列出的
+        // 扩展名一致;不支持或解析失败的文件会在 BpmAudioLoader.Load 中静默返回 null。
         DragEnter += (s, e) =>
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))

@@ -15,7 +15,7 @@
   <data name="AudioFiles" xml:space="preserve"><value>音频文件</value></data>
   <data name="AllFiles" xml:space="preserve"><value>所有文件</value></data>
   <data name="DropHint" xml:space="preserve"><value>拖放音频文件到此处，或点击「导入音频」按钮</value></data>
-  <data name="LoadError" xml:space="preserve"><value>无法加载音频文件。&#xA;请确认文件格式受支持（mp3/wav/ogg/flac）。</value></data>
+  <data name="LoadError" xml:space="preserve"><value>无法加载音频文件。&#xA;请确认文件格式受支持（MP3/WAV/OGG/FLAC/AAC/M4A/OPUS/MKA 等）。</value></data>
   <data name="Error" xml:space="preserve"><value>错误</value></data>
   <data name="SampleRate" xml:space="preserve"><value>采样率: </value></data>
   <data name="Duration" xml:space="preserve"><value>时长: </value></data>

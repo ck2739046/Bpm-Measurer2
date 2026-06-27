@@ -23,6 +23,18 @@ public partial class MainWindow
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_UPDATEPERIOD, 5);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_BUFFER, 10);
 
+        // 注册 BASS 插件(x64,须与 bass.dll 同位数):扩展 BASS_StreamCreateFile 可解码的
+        // 容器/编码,须在 BASS_Init 之后调用。失败不致命(对应格式将无法解码),仅写 Debug 日志。
+        //   bass_aac.dll  → AAC:  .aac(ADTS)、.m4a/.m4b/.mp4(MP4 容器)
+        //   bassflac.dll  → FLAC: .flac(及 Ogg-FLAC .oga/.ogg)
+        //   bassopus.dll  → Opus: .opus(Ogg/Opus;亦可 .oga/.ogg 内 Opus 轨)
+        //   basswebm.dll  → WebM & Matroska: .webm/.mka/.mkv(音频轨可为 Opus/Vorbis)
+        foreach (var plugin in new[] { "bass_aac.dll", "bassflac.dll", "bassopus.dll", "basswebm.dll" })
+        {
+            if (Bass.BASS_PluginLoad(plugin) == 0)
+                System.Diagnostics.Debug.WriteLine($"BASS_PluginLoad({plugin}) failed: {Bass.BASS_ErrorGetCode()}");
+        }
+
         // 启动时若指定了音频(--audio= 或位置参数),自动加载。
         // 延后一帧:确保 BASS_Init 已完成、UI 控件布局就绪,避免在 Loaded 同步栈中阻塞。
         var startupPath = App.StartupAudioPath;
@@ -53,7 +65,15 @@ public partial class MainWindow
         var dlg = new OpenFileDialog
         {
             Title = Loc("SelectAudioFile"),
-            Filter = $"{Loc("AudioFiles")}|*.mp3;*.wav;*.ogg;*.flac;*.aac;*.m4a|{Loc("AllFiles")}|*.*"
+            // 扩展名清单与各 BASS 组件对应(未命中下列扩展名、或用「所有文件」选的文件,
+            // 拖放/导入后统一交 BASS_StreamCreateFile 解码,能否成功取决于已加载的插件):
+            //   内置(bass.dll) : .mp3/.mp2/.mp1 .wav .ogg(Vorbis) .aiff/.aif
+            //                    (另依赖系统 ACM/Media Foundation 解码:WMA 等)
+            //   bass_aac.dll   : .aac .m4a/.m4b/.mp4
+            //   bassflac.dll   : .flac .oga(Ogg-FLAC)
+            //   bassopus.dll   : .opus(.oga/.ogg 内 Opus)
+            //   basswebm.dll   : .mka/.mkv/.webm
+            Filter = $"{Loc("AudioFiles")}|*.mp3;*.mp2;*.wav;*.ogg;*.oga;*.flac;*.aac;*.m4a;*.m4b;*.mp4;*.opus;*.mka;*.mkv;*.webm;*.aiff;*.aif|{Loc("AllFiles")}|*.*"
         };
         if (dlg.ShowDialog() == true)
             LoadAudioFile(dlg.FileName);

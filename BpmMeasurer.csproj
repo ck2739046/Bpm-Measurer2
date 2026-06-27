@@ -48,6 +48,28 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>bass_fx.dll</TargetPath>
         </ContentWithTargetPath>
+        <!-- BASS add-on 插件(x64),须与 bass.dll 同位数。启动时由 BASS_PluginLoad 注册,
+             扩展 BASS_StreamCreateFile 可解码的容器/编码格式。详见 MainWindow.Playback.cs。 -->
+        <!-- bass_aac.dll → AAC: .aac(ADTS), .m4a/.m4b/.mp4(MP4 容器) -->
+        <ContentWithTargetPath Include="bass_aac.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>bass_aac.dll</TargetPath>
+        </ContentWithTargetPath>
+        <!-- bassflac.dll → FLAC: .flac(以及 Ogg-FLAC .oga/.ogg) -->
+        <ContentWithTargetPath Include="bassflac.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>bassflac.dll</TargetPath>
+        </ContentWithTargetPath>
+        <!-- bassopus.dll → Opus: .opus(Ogg/Opus;亦可 .oga/.ogg 内的 Opus 轨) -->
+        <ContentWithTargetPath Include="bassopus.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>bassopus.dll</TargetPath>
+        </ContentWithTargetPath>
+        <!-- basswebm.dll → WebM & Matroska: .webm/.mka/.mkv(音频轨可为 Opus/Vorbis) -->
+        <ContentWithTargetPath Include="basswebm.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>basswebm.dll</TargetPath>
+        </ContentWithTargetPath>
         <ContentWithTargetPath Include="libfftw3f-3.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>libfftw3f-3.dll</TargetPath>
