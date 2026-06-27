@@ -4,6 +4,8 @@ A tool for measuring and editing **BPM timing** of audio files, with waveform/sp
 
 > Run into issues, need a hand, want to report bugs, share suggestions, or talk development? Join our QQ group chat **`868888361`**
 
+▶️ [**Demo Video**](https://www.bilibili.com/video/BV1fD786hE3M)
+
 ## Command-line Arguments
 
 ```
