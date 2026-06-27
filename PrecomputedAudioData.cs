@@ -146,9 +146,14 @@ public static class PrecomputedAudioData
         for (int i = 0; i < fftSize; i++)
             hannWindow[i] = 0.5f * (1f - MathF.Cos(2f * MathF.PI * i / (fftSize - 1)));
 
-        // ── Open a test stream to query sample rate ──
+        // ── Open a test stream to query sample rate + channel count ──
+        // NOTE: BASS_SAMPLE_MONO is deliberately NOT used. Per BASS docs that flag only
+        // downmixes OGG/MP3/MP2/MP1 — it is silently IGNORED for WAV, leaving a stereo
+        // decode stream that the code below would mistake for mono, stretching the
+        // spectrogram's time axis by the channel count. We instead read the real channel
+        // count here and downmix in code (matching BpmAudioLoader's approach).
         var testStream = Bass.BASS_StreamCreateFile(filePath, 0L, 0L,
-            BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_SAMPLE_FLOAT);
+            BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT);
         if (testStream == 0)
             return new SpectrogramData
             {
@@ -158,6 +163,8 @@ public static class PrecomputedAudioData
 
         var channelInfo = Bass.BASS_ChannelGetInfo(testStream);
         int sampleRate = channelInfo.freq;
+        int chans = Math.Max(1, channelInfo.chans);
+        float invChans = 1f / chans;
         Bass.BASS_StreamFree(testStream);
 
         // ── Derived timing / chunking parameters ──
@@ -173,19 +180,23 @@ public static class PrecomputedAudioData
         var parallelism = PrecomputeParallel.Options.MaxDegreeOfParallelism;
         var chunkColumns = (columns + parallelism - 1) / parallelism;
 
-        // ── Overflow guard: ensure each chunk's sample count fits in int ──
-        long maxChunkSamples = (long)(chunkColumns - 1) * hopSamples + fftSize;
-        if (maxChunkSamples > int.MaxValue || maxChunkSamples * sizeof(float) > int.MaxValue)
+        // ── Overflow guard: ensure each chunk's interleaved sample count fits in int ──
+        // maxChunkFrames is in MONO FRAMES; the decode buffer holds maxChunkFrames*chans
+        // interleaved floats, so the guard must account for the channel count.
+        long maxChunkFrames = (long)(chunkColumns - 1) * hopSamples + fftSize;
+        long maxChunkFloats = maxChunkFrames * chans;
+        if (maxChunkFrames > int.MaxValue || maxChunkFloats > int.MaxValue
+            || maxChunkFloats * sizeof(float) > int.MaxValue)
         {
             System.Diagnostics.Debug.WriteLine(
-                $"Audio too long ({duration:F1}s, {totalMonoSamples} samples). Cannot process spectrogram.");
+                $"Audio too long ({duration:F1}s, {totalMonoSamples} frames, {chans}ch). Cannot process spectrogram.");
             return new SpectrogramData
             {
                 FreqBands = freqBands, Columns = 0,
                 TimeStep = timeStep, Duration = duration
             };
         }
-        var decodeFlags = BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_SAMPLE_FLOAT;
+        var decodeFlags = BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT;
 
         // ── Create shared FFTW plan (planner is NOT thread-safe) ──
         UIntPtr planInputBytes = (UIntPtr)(fftSize * sizeof(float));
@@ -208,7 +219,7 @@ public static class PrecomputedAudioData
             int endCol = Math.Min(startCol + chunkColumns, columns);
             if (startCol >= endCol) return;
 
-            // ── PCM range for this chunk ──
+            // ── PCM range for this chunk (units: MONO FRAMES, i.e. one sample per channel) ──
             long pcmStartSample = startCol * (long)hopSamples;
             pcmStartSample = Math.Max(0, pcmStartSample);
             long pcmEndSample = (endCol - 1) * (long)hopSamples + fftSize;
@@ -225,16 +236,18 @@ public static class PrecomputedAudioData
 
             try
             {
-                // Seek once to chunk start, read entire PCM block sequentially
-                long pcmBytePos = pcmStartSample * sizeof(float);
+                // Seek once to chunk start (interleaved bytes = frames * chans * sizeof(float)),
+                // then read the entire PCM block sequentially into an interleaved buffer.
+                long pcmBytePos = pcmStartSample * chans * sizeof(float);
                 if (!Bass.BASS_ChannelSetPosition(stream, pcmBytePos))
                     return;
 
-                var pcmBuffer = new float[chunkSampleCount];
-                int bytesToRead = chunkSampleCount * sizeof(float);
+                // Interleaved buffer: chunkSampleCount frames × chans channels.
+                var pcmBuffer = new float[chunkSampleCount * chans];
+                int bytesToRead = chunkSampleCount * chans * sizeof(float);
                 int bytesRead = Bass.BASS_ChannelGetData(stream, pcmBuffer, bytesToRead);
-                int samplesRead = bytesRead / sizeof(float);
-                if (samplesRead < fftSize) return;
+                int framesRead = bytesRead / sizeof(float) / chans;
+                if (framesRead < fftSize) return;
 
                 // ── Per-thread FFTW buffers (thread-safe new-array execute) ──
                 UIntPtr inputBytes = (UIntPtr)(fftSize * sizeof(float));
@@ -256,16 +269,24 @@ public static class PrecomputedAudioData
                     for (int c = startCol; c < endCol; c++)
                     {
                         int pcmOffset = (int)(c * (long)hopSamples - pcmStartSample);
-                        if (pcmOffset < 0 || pcmOffset + fftSize > samplesRead)
+                        if (pcmOffset < 0 || pcmOffset + fftSize > framesRead)
                         {
                             for (int b = 0; b < freqBands; b++)
                                 outputMagnitudes[b, c] = 0;
                             continue;
                         }
 
-                        // Apply Hann window → managed input buffer → FFTW input
+                        // Downmix interleaved channels to mono (avg) and apply the Hann window.
+                        // For mono input (chans=1) the inner channel loop is skipped and invChans=1,
+                        // so behavior is identical to the original direct-index path.
                         for (int i = 0; i < fftSize; i++)
-                            fftInBuf[i] = pcmBuffer[pcmOffset + i] * hannWindow[i];
+                        {
+                            int baseIdx = (pcmOffset + i) * chans;
+                            float sum = pcmBuffer[baseIdx];
+                            for (int ch = 1; ch < chans; ch++)
+                                sum += pcmBuffer[baseIdx + ch];
+                            fftInBuf[i] = sum * invChans * hannWindow[i];
+                        }
                         Marshal.Copy(fftInBuf, 0, fftIn, fftSize);
 
                         FftwNative.fftwf_execute_dft_r2c(sharedPlan, fftIn, fftOut);
