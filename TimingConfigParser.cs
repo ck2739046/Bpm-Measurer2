@@ -63,11 +63,11 @@ public static class TimingConfigParser
                     error = MainWindow.Loc("ConfigImport_Err_MultipleInLine");
                     return false;
                 }
-                // Rule 1b: offset must be finite and non-negative.
+                // Rule 1b: offset must be finite (may be negative — see global spec).
                 // (NumberStyles.Number rejects scientific notation like 1e2.)
-                if (!double.IsFinite(offset) || offset < 0)
+                if (!double.IsFinite(offset))
                 {
-                    error = MainWindow.Loc("ConfigImport_Err_NegativeOffset");
+                    error = MainWindow.Loc("ConfigImport_Err_NoOffset");
                     return false;
                 }
                 hasOffset = true;

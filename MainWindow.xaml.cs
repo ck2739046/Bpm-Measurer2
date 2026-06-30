@@ -137,7 +137,7 @@ public partial class MainWindow : Window
 
         OffsetStepper.Configure(
             new[] { 1.0, 0.1, 0.01 },
-            0, double.PositiveInfinity, 3,
+            double.NegativeInfinity, double.PositiveInfinity, 3,
             Color.FromRgb(0x4A, 0xDE, 0x80), false);
         OffsetStepper.SetValue(_globalOffset);
         OffsetStepper.ValueChanged += (s, v) =>

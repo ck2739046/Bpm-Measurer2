@@ -107,8 +107,8 @@ public partial class MainWindow
             // Apply.
             if (_audioData != null)
             {
-                OffsetStepper.SetRange(0, _audioData.Duration);
-                offset = Math.Clamp(offset, 0, _audioData.Duration);
+                OffsetStepper.SetRange(-_audioData.Duration, _audioData.Duration);
+                offset = Math.Clamp(offset, -_audioData.Duration, _audioData.Duration);
             }
             _globalOffset = Math.Round(offset * 1000.0) / 1000.0;
             _rawPoints = points;

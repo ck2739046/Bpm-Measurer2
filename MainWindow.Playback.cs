@@ -237,7 +237,7 @@ public partial class MainWindow
         // Initialize timing state
         _globalOffset = 0.0;
         _rawPoints = new List<RawTimingPoint> { new RawTimingPoint(Guid.NewGuid(), 0, 120) };
-        OffsetStepper.SetRange(0, _audioData.Duration);
+        OffsetStepper.SetRange(-_audioData.Duration, _audioData.Duration);
         RefreshTimingPoints();
         ResetUndoHistory();
         ResetExpandedSegmentToAnchor(); // open on the beat-0 anchor after a fresh load

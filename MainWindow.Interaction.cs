@@ -168,11 +168,12 @@ public partial class MainWindow
             {
                 double deltaTime = mouseTime - _dragStartTime;
                 double newOffset = _dragStartOffset + deltaTime;
-                double clampedOffset = Math.Max(0, Math.Min(newOffset, _audioData.Duration));
-                if (clampedOffset <= 0.001 && _globalOffset > 0.001)
+                double clampedOffset = Math.Max(-_audioData.Duration, Math.Min(newOffset, _audioData.Duration));
+                if (clampedOffset <= -_audioData.Duration + 0.001
+                    && _globalOffset > -_audioData.Duration + 0.001)
                 {
                     DebugLog.Log(
-                        $"Offset drag hit start: newOffset={newOffset} clamped={clampedOffset} " +
+                        $"Offset drag hit min bound: newOffset={newOffset} clamped={clampedOffset} " +
                         $"mouseTime={mouseTime} dragStartTime={_dragStartTime} " +
                         $"viewHalfWidth={_viewHalfWidth} viewCenterTime={_viewCenterTime}");
                 }

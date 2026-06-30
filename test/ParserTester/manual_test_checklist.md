@@ -13,7 +13,6 @@
 | R1.1 | `InvalidConfigs\R1.1_missing_offset.txt` | 缺少 global_offset，或其值无效 |
 | R1.2 | `InvalidConfigs\R1.2_duplicate_offset.txt` | global_offset 只能出现 1 次 |
 | R1.3 | `InvalidConfigs\R1.3_invalid_offset_value.txt` | 缺少 global_offset，或其值无效 |
-| R1.4 | `InvalidConfigs\R1.4_negative_offset.txt` | global_offset 不能为负数 |
 | R1.5 | `InvalidConfigs\R1.5_offset_mixed_with_segment.txt` | global_offset 行不能混入其它内容 |
 | R1.6 | `InvalidConfigs\R1.6_two_offsets_one_line.txt` | global_offset 行不能混入其它内容 |
 | R2 | `InvalidConfigs\R2_no_segment.txt` | 至少需要 1 个 bpm 段 |
@@ -48,6 +47,7 @@
 | N8 | `ValidConfigs\N8_offset_thousand_sep.txt` | offset=1,000.5 解析为 1000.5 |
 | N9 | `ValidConfigs\N9_bpm_low_clamp.txt` | bpm=5 → clamp 到 10 |
 | N10 | `ValidConfigs\N10_bpm_high_clamp.txt` | bpm=2000 → clamp 到 1000 |
+| N12 | `ValidConfigs\N12_negative_offset.txt` | 导入成功：offset=-1.5（负值正确接受），1 个段 bpm=120 |
 
 ---
 

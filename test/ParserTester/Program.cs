@@ -40,7 +40,6 @@ class Program
         TestInvalid("R1.1_missing_offset", "ConfigImport_Err_NoOffset");
         TestInvalid("R1.2_duplicate_offset", "ConfigImport_Err_DuplicateOffset");
         TestInvalid("R1.3_invalid_offset_value", "ConfigImport_Err_NoOffset");
-        TestInvalid("R1.4_negative_offset", "ConfigImport_Err_NegativeOffset");
         TestInvalid("R1.5_offset_mixed_with_segment", "ConfigImport_Err_MultipleInLine");
         TestInvalid("R1.6_two_offsets_one_line", "ConfigImport_Err_MultipleInLine");
         TestInvalid("R2_no_segment", "ConfigImport_Err_NoSegment");
@@ -103,6 +102,7 @@ class Program
         TestValid_N9();
         TestValid_N10();
         TestValid_N11();
+        TestValid_N12();
     }
 
     static bool ParseValid(string fileName, out double offset, out List<RawTimingPoint> points)
@@ -233,6 +233,16 @@ class Program
         if (pts[1].BeatsPerBar != 3) { Fail(name, $"段1 beats_per_bar 期望 3，实际 {pts[1].BeatsPerBar}"); return; }
         if (pts[2].BeatIndex != 200) { Fail(name, $"段2 beat_index 期望 200，实际 {pts[2].BeatIndex}"); return; }
         Pass(name, $"offset={off} 小数 beat_index 正确解析");
+    }
+
+    static void TestValid_N12()
+    {
+        const string name = "N12_negative_offset";
+        if (!ParseValid(name, out var off, out var pts)) return;
+        if (off != -1.5) { Fail(name, $"负 offset 期望 -1.5，实际 {off}"); return; }
+        if (pts.Count != 1) { Fail(name, $"段数期望 1，实际 {pts.Count}"); return; }
+        if (pts[0].Bpm != 120) { Fail(name, $"bpm 期望 120，实际 {pts[0].Bpm}"); return; }
+        Pass(name, $"offset={off}（负值正确接受）段数={pts.Count} bpm={pts[0].Bpm}");
     }
 
     // ═══ Helpers ═══
